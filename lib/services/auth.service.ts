@@ -1,9 +1,10 @@
 import User from '@/models/user.model';
 import jwt from 'jsonwebtoken';
-import   '@/lib/mongo'
+import dbConnect from '@/lib/mongo';
 
 export const Login = async (body: { username: string, password: string
 }) => {
+	await dbConnect();
 	const username = body.username
 		.toLowerCase()
 		.replace('+84', '0')
@@ -27,7 +28,7 @@ export const Login = async (body: { username: string, password: string
 			email: user.email,
 			phone: user.phone,
 		},
-		process.env.JWT_SECRET!,
+		process.env.JWT_SECRET || 'fallback_secret',
 		{ expiresIn: '30d' }
 	);
 
@@ -39,7 +40,7 @@ export const changePasswordFromToken = async (
 	newPassword: string
 ) => {
 	// 1. Giải mã token
-	const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
+	const payload = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as any;
 
 	// 2. Lấy user từ DB (CẦN password)
 	const user = await User.findById(payload.userId).select('+password');
