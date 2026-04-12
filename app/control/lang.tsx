@@ -21,7 +21,7 @@ export default function LangLandingLayout({children, payload, menu}: {
 						<div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-800 mx-1" />
 						<div className="flex-1" />
 					</header>
-					<div className="p-3">
+					<div className="flex-1 flex flex-col min-h-0">
 						{children}
 					</div>
 				</SidebarInset>

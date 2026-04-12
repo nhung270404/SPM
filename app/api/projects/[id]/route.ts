@@ -6,12 +6,13 @@ import WorkItem from '@/models/work-item.model'; // Import thêm để xóa kèm
 // --- 1. GET: Lấy thông tin chi tiết dự án (Sửa lỗi 404 của cậu) ---
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     await connectToDatabase();
 
-    const project = await Project.findById(params.id)
+    const project = await Project.findById(id)
       .populate('manager', 'firstname lastname email'); // Lấy thông tin người quản lý
 
     if (!project) {
@@ -28,15 +29,16 @@ export async function GET(
 // --- 2. PUT: Cập nhật thông tin dự án (Dùng cho nút Lưu trong Settings) ---
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     await connectToDatabase();
     const body = await request.json();
 
     // Tìm và cập nhật
     const updatedProject = await Project.findByIdAndUpdate(
-      params.id,
+      id,
       {
         title: body.title,
         description: body.description,
@@ -60,20 +62,21 @@ export async function PUT(
 // --- 3. DELETE: Xóa dự án (Dùng cho nút Xóa dự án - Vùng nguy hiểm) ---
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     await connectToDatabase();
 
     // Xóa dự án
-    const deletedProject = await Project.findByIdAndDelete(params.id);
+    const deletedProject = await Project.findByIdAndDelete(id);
 
     if (!deletedProject) {
       return NextResponse.json({ error: 'Không tìm thấy dự án' }, { status: 404 });
     }
 
     // [Tùy chọn] Xóa luôn tất cả Task liên quan đến dự án này cho sạch DB
-    await WorkItem.deleteMany({ project: params.id });
+    await WorkItem.deleteMany({ project: id });
 
     return NextResponse.json({ message: 'Đã xóa dự án thành công' });
   } catch (error: any) {
