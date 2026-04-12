@@ -25,9 +25,8 @@ export function SiteHeader() {
     // Dark: dark:bg-black (Đen)
     // Bỏ backdrop-blur, thêm transition-colors để đổi màu mượt mà
     <header className={cn(
-      "sticky top-0 z-50 flex w-full items-center border-b transition-colors duration-300",
-      "bg-[#FF8F5C] border-orange-700/10", // Light Mode Styles
-      "dark:bg-black dark:border-zinc-800"  // Dark Mode Styles
+      "sticky top-0 z-50 flex w-full items-center border-b transition-all duration-300",
+      "bg-white/80 dark:bg-black/80 backdrop-blur-md border-slate-200/50 dark:border-slate-800/50 shadow-sm"
     )}>
       <div className="flex h-(--header-height) w-full items-center gap-2 px-4">
 
@@ -35,9 +34,9 @@ export function SiteHeader() {
         {/* Light: Trắng - Dark: Cam */}
         <Button
           className={cn(
-            "h-8 w-8 transition-colors",
-            "text-white hover:bg-white/20 hover:text-white", // Light
-            "dark:text-orange-500 dark:hover:bg-zinc-900 dark:hover:text-orange-400" // Dark
+            "h-8 w-8 transition-all hover:scale-110",
+            "text-slate-600 hover:bg-slate-100 hover:text-primary", // Light
+            "dark:text-primary dark:hover:bg-slate-900 dark:hover:text-primary" // Dark
           )}
           variant="ghost"
           size="icon"
@@ -64,8 +63,8 @@ export function SiteHeader() {
                 href="#"
                 className={cn(
                   "transition-colors",
-                  "text-white/80 hover:text-white", // Light
-                  "dark:text-zinc-400 dark:hover:text-orange-500" // Dark
+                  "text-slate-500 hover:text-primary", // Light
+                  "dark:text-slate-400 dark:hover:text-primary" // Dark
                 )}
               >
                 Building Your Application
@@ -79,9 +78,9 @@ export function SiteHeader() {
 
             <BreadcrumbItem>
               <BreadcrumbPage className={cn(
-                "font-medium",
-                "text-white", // Light
-                "dark:text-orange-500" // Dark (Active Item màu cam)
+                "font-bold",
+                "text-slate-900", // Light
+                "dark:text-primary" // Dark (Active Item màu primary)
               )}>
                 Data Fetching
               </BreadcrumbPage>
@@ -90,7 +89,7 @@ export function SiteHeader() {
         </Breadcrumb>
 
         {/* Search Form */}
-        <SearchForm className="w-full min-w-[300px] text-white sm:ml-auto sm:w-auto" />
+        <SearchForm className="w-full min-w-[300px] text-slate-900 dark:text-white sm:ml-auto sm:w-auto" />
       </div>
     </header>
   );

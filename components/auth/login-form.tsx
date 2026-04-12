@@ -25,8 +25,19 @@ export function LoginForm() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
+
+        // [MỚI] Kiểm tra rỗng thủ công
+        if (!formData.username.trim()) {
+            setError("Vui lòng nhập Email hoặc Số điện thoại của bạn.");
+            return;
+        }
+        if (!formData.password.trim()) {
+            setError("Vui lòng nhập mật khẩu của bạn.");
+            return;
+        }
+
         setLoading(true);
-        setError(''); // Reset lỗi cũ
 
         try {
             await POST_METHOD('/api/login', formData);
@@ -34,9 +45,7 @@ export function LoginForm() {
             router.push(searchParams.get('redirect') || '/control');
         } catch (err: any) {
             console.error(err);
-            // [MỚI] Hiển thị lỗi theo yêu cầu
             setError("Tài khoản hoặc mật khẩu không đúng. Vui lòng nhập lại.");
-            // Hoặc rung form nếu muốn (Optional)
         } finally {
             setLoading(false);
         }
@@ -76,7 +85,7 @@ export function LoginForm() {
             </div>
 
             <CardContent className="p-6">
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
 
                     <div>
                         <Label htmlFor="username" className={labelClass}>
@@ -87,10 +96,9 @@ export function LoginForm() {
                             <Input
                                 id="username"
                                 placeholder="name@example.com"
-                                className={inputClass}
+                                className={cn(inputClass, error && (error.includes("Email") || error.includes("Tài khoản")) && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
                                 value={formData.username}
                                 onChange={e => { setFormData({...formData, username: e.target.value}); setError(''); }}
-                                required
                             />
                         </div>
                     </div>
@@ -110,10 +118,9 @@ export function LoginForm() {
                                 id="password"
                                 type={showPass ? "text" : "password"}
                                 placeholder="••••••••"
-                                className={cn(inputClass, 'pr-11')}
+                                className={cn(inputClass, 'pr-11', error && (error.includes("mật khẩu") || error.includes("Tài khoản")) && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
                                 value={formData.password}
                                 onChange={e => { setFormData({...formData, password: e.target.value}); setError(''); }}
-                                required
                             />
                             <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3.5 top-3.5 text-slate-400 hover:text-[#36caf1] transition-colors">
                                 {showPass ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}

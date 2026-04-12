@@ -5,7 +5,7 @@ export interface IMenuSideBar {
 
 export interface IMenuSideBarNav extends IMenuSideBarItem {
 	items?: IMenuSideBarItem[]
-	icon: string
+	icon: string | any
 	isActive?: boolean
 }
 

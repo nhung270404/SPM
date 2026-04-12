@@ -263,6 +263,7 @@ export function ChartAreaInteractive() {
               stroke="var(--color-desktop)"
               stackId="a"
             />
+            {/* @ts-expect-error Recharts injects payload implicitly */}
             <ChartLegend content={<ChartLegendContent className="text-white" />} />
           </AreaChart>
         </ChartContainer>

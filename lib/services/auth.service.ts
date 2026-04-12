@@ -27,6 +27,8 @@ export const Login = async (body: { username: string, password: string
 			userId: user._id,
 			email: user.email,
 			phone: user.phone,
+			firstname: user.firstname,
+			lastname: user.lastname,
 		},
 		process.env.JWT_SECRET || 'fallback_secret',
 		{ expiresIn: '30d' }

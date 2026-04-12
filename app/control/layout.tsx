@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { ReactNode } from 'react';
 import { IMenuSideBar } from '@/models/menu-sidebar.model';
 import LangLandingLayout from '@/app/control/lang';
+import { getMeById } from '@/lib/services/auth.service';
+import { IUser } from '@/models/user.model';
 
 
 export default async function ManLayout({ children }: { children: ReactNode }) {
@@ -14,10 +16,18 @@ export default async function ManLayout({ children }: { children: ReactNode }) {
   }
   const payload = await verifyToken(token);
   if (!payload) return redirect('/api/logout');
+
+  // Lấy User đầy đủ từ DB để có firstname/lastname ngay lập tức
+  let user: IUser;
+  try {
+    user = await getMeById((payload as any).userId) as any;
+  } catch (error) {
+    return redirect('/api/logout');
+  }
   const MenuSideBar: IMenuSideBar = {
     navMain: [
       {
-        title: 'i_user',
+        title: 'Người dùng',
         url: '/control/user',
         icon: 'User',
         items: [
@@ -41,7 +51,10 @@ export default async function ManLayout({ children }: { children: ReactNode }) {
       },
     ],
   };
+  // Chuyển đổi sang Plain Object để có thể truyền từ Server sang Client Component
+  const serializableUser = JSON.parse(JSON.stringify(user));
+
   return (
-    <LangLandingLayout payload={payload} menu={MenuSideBar}>{children}</LangLandingLayout>
+    <LangLandingLayout payload={serializableUser} menu={MenuSideBar}>{children}</LangLandingLayout>
   );
 }

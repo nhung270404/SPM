@@ -4,5 +4,5 @@ import { redirect } from 'next/navigation';
 export async function GET() {
   const cc = await cookies();
   cc.delete('accessToken');
-  redirect('/');
+  redirect('/login');
 }

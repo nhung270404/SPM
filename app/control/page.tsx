@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { ChartAreaInteractive } from '@/components/dashboard/chart';
+import { ProjectActivityWidget } from '@/components/dashboard/project-activity';
+import { PerformanceStatsWidget, PerformanceCurveWidget } from '@/components/dashboard/performance-stats';
 import { Sun, CloudSun, Moon, Stars } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { CalendarWidget } from '@/components/dashboard/calendar';
@@ -15,9 +17,6 @@ const GreetingSection = () => {
     gradient: 'from-[#36caf1]/30 to-[#03bdd8]/10', // Màu mặc định
     textColor: 'text-[#03bdd8]'
   });
-
-  // Tên người dùng (Sau này cậu lấy từ API hoặc Context)
-  const userName = "Hoàng Khiêm";
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -91,10 +90,10 @@ const GreetingSection = () => {
   const Icon = timeData.icon;
 
   return (
-    <Card className={`relative overflow-hidden border-none bg-white/50 dark:bg-slate-900/50 rounded-[2rem] h-full bg-gradient-to-r ${timeData.gradient}`}>
+    <Card className={`relative overflow-hidden border-none bg-white/50 dark:bg-slate-900/50 rounded-[2rem] h-full flex flex-col bg-gradient-to-r ${timeData.gradient}`}>
       {/* Vệt sáng lướt qua Header (Hiệu ứng) */}
       <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#36caf1] to-transparent opacity-50" />
-      <CardContent className="p-6 md:p-8 flex items-center justify-between z-10 relative">
+      <CardContent className="p-6 md:p-8 flex items-center justify-between z-10 relative pb-0 md:pb-2">
         <div className="space-y-1">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
             {timeData.greeting}
@@ -105,10 +104,14 @@ const GreetingSection = () => {
         </div>
 
         {/* Icon trang trí bên phải */}
-        <div className={`p-4 rounded-full bg-white/10 backdrop-blur-sm hidden md:block ${timeData.textColor}`}>
-          <Icon className="h-12 w-12 md:h-16 md:w-16 opacity-80" />
+        <div className={`p-3 rounded-full bg-white/10 backdrop-blur-sm hidden md:block ${timeData.textColor}`}>
+          <Icon className="h-10 w-10 md:h-12 md:w-12 opacity-80" />
         </div>
       </CardContent>
+      
+      <div className="px-6 md:px-8 pb-6 md:pb-8 flex-1 w-full z-10 relative mt-2">
+        <PerformanceCurveWidget />
+      </div>
     </Card>
   );
 };
@@ -128,9 +131,19 @@ export default function ManPage() {
         </div>
       </div>
 
-      {/* 2. Biểu đồ lớn (Giữ nguyên) */}
-      <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min border border-border/50 shadow-sm">
-        <ChartAreaInteractive />
+      {/* 2. Phần Quản lý Dự án & Hiệu suất (Thay cho biểu đồ lớn cũ) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full items-stretch mt-4">
+        {/* Cột trái (Chiếm 2 phần) - Danh sách thẻ Project */}
+        <div className="lg:col-span-2 overflow-hidden">
+          <ProjectActivityWidget />
+        </div>
+
+        {/* Cột phải (Chiếm 1 phần) - Thống kê Performance */}
+        <div className="lg:col-span-1">
+          <div className="bg-cyan-50/30 dark:bg-slate-900/40 backdrop-blur-sm rounded-[2rem] p-6 shadow-sm border border-cyan-100/50 dark:border-slate-800/50 h-full flex flex-col">
+            <PerformanceStatsWidget />
+          </div>
+        </div>
       </div>
     </div>
   );

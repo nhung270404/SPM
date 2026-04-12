@@ -159,7 +159,7 @@ export function SignupForm() {
                             <Label className={labelClass}>Email</Label>
                             <div className="relative group">
                                 <Mail className={iconClass} />
-                                <Input {...register('email')} placeholder="email@domain.com" className={inputClass} onBlur={(e) => checkExists('email', e.target.value)} />
+                                <Input {...register('email')} placeholder="email@gmail.com" className={inputClass} onBlur={(e) => checkExists('email', e.target.value)} />
                             </div>
                             {errors.email && <p className={errorText}>{errors.email.message}</p>}
                         </div>

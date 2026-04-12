@@ -11,6 +11,9 @@ export interface IUser extends Document {
   roles: mongoose.Types.ObjectId[];
   avatar?: string;
   cover?: string;
+  department?: string;
+  position?: string;
+  status: 'active' | 'inactive';
   createdAt: Date;
   updatedAt: Date;
   isGod: boolean;
@@ -74,6 +77,19 @@ const UserSchema = new Schema<IUser>({
   },
   cover: {
     type: String,
+  },
+  department: {
+    type: String,
+    default: 'Chưa xác định',
+  },
+  position: {
+    type: String,
+    default: 'Nhân viên',
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active',
   },
   resetPasswordToken: {
     type: String,
