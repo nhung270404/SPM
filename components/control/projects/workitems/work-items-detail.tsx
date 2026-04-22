@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 
 // Types and Shared Data
 import {
-    Task, columns, estimates, mockMembers, STATUS_OPTIONS
+    Task, columns, estimates, STATUS_OPTIONS
 } from './work-items-types';
 
 // --- TYPES FOR ACTIVITY ---
@@ -111,23 +111,20 @@ const RichTextEditor = ({ onSend }: { onSend: (html: string) => void }) => {
 
 // --- MAIN EXPORT: WORK ITEM DETAIL PANEL ---
 export function WorkItemsDetailPanel({
-                                         task, tasks, onClose, onUpdate, onCreateSubtask
+                                         task, tasks, members, onClose, onUpdate, onCreateSubtask
                                      }: {
-    task: Task, tasks: Task[], onClose: () => void, onUpdate: (id: string, field: string, val: any) => void, onCreateSubtask: () => void
+    task: Task, tasks: Task[], members: any[], onClose: () => void, onUpdate: (id: string, field: string, val: any) => void, onCreateSubtask: () => void
 }) {
     const subtasks = tasks.filter(t => t.parentId === task._id);
     const [isSubtasksExpanded, setIsSubtasksExpanded] = useState(true);
     const headerFileRef = useRef<HTMLInputElement>(null);
 
     const [activities, setActivities] = useState<Activity[]>([
-        { id: '1', type: 'create', user: mockMembers[0], content: 'đã tạo công việc này', timestamp: new Date(Date.now() - 172800000) },
-        { id: '2', type: 'assign', user: mockMembers[0], content: 'đã gán cho <b>Nguyễn Văn A</b>', timestamp: new Date(Date.now() - 86400000) },
-        { id: '3', type: 'comment', user: mockMembers[1], content: 'Task này cần thêm thông tin API.', timestamp: new Date(Date.now() - 3600000) },
-        { id: '4', type: 'state', user: mockMembers[0], content: 'đã chuyển trạng thái sang <b>In Progress</b>', timestamp: new Date(Date.now() - 120000) }
+        { id: '1', type: 'create', user: members[0] || { name: 'System' }, content: 'đã tạo công việc này', timestamp: new Date(Date.now() - 172800000) },
     ]);
 
     const handleSendComment = (html: string) => {
-        const newActivity: Activity = { id: Math.random().toString(), type: 'comment', user: mockMembers[0], content: html, timestamp: new Date() };
+        const newActivity: Activity = { id: Math.random().toString(), type: 'comment', user: members[0] || { name: 'User' }, content: html, timestamp: new Date() };
         setActivities([...activities, newActivity]);
         toast.success("Đã gửi bình luận");
     };
@@ -194,10 +191,56 @@ export function WorkItemsDetailPanel({
                 <div className="space-y-1">
                     <h3 className="text-sm font-bold text-white mb-2">Thuộc tính</h3>
                     {renderDetailProp("Trạng thái", LayoutGrid, <span className="capitalize">{columns[task.status as keyof typeof columns]?.title}</span>, <Command className="bg-transparent border-0"><CommandList className="max-h-none">{STATUS_OPTIONS.map(c => <CommandItem key={c.value} onSelect={() => onUpdate(task._id, 'status', c.value)} className="hover:bg-white/5 cursor-pointer text-zinc-300"><c.icon className={cn("mr-2 h-3.5 w-3.5", c.color)} />{c.label}</CommandItem>)}</CommandList></Command>)}
-                    {renderDetailProp("Người phụ trách", User, task.assignee ? task.assignee.name : "Thêm người phụ trách", <Command className="bg-transparent border-0"><CommandInput placeholder="Tìm..." className="h-8 text-zinc-300" /><CommandList className="max-h-none"><CommandEmpty className="text-zinc-500 text-xs py-2 px-4">None</CommandEmpty><CommandGroup>{mockMembers.map(m => <CommandItem key={m.id} onSelect={() => onUpdate(task._id, 'assignee', m)} className="hover:bg-white/5 cursor-pointer text-zinc-300"><Avatar className="h-4 w-4 mr-2"><AvatarImage src={m.avatar}/><AvatarFallback>{m.name[0]}</AvatarFallback></Avatar>{m.name}</CommandItem>)}</CommandGroup></CommandList></Command>)}
-                    <div className="grid grid-cols-3 items-center py-2"><div className="text-zinc-500 text-sm font-medium col-span-1">Người tạo</div><div className="col-span-2 flex items-center gap-2 px-2"><Avatar className="h-5 w-5"><AvatarFallback className="text-[9px] bg-zinc-700 font-bold">{task.creator?.name ? task.creator.name[0] : 'U'}</AvatarFallback></Avatar><span className="text-sm text-zinc-300">{task.creator?.name || 'Unknown'}</span></div></div>
-                    {renderDetailProp("Ngày bắt đầu", CalendarIcon, task.startDate ? format(new Date(task.startDate), "dd/MM/yyyy") : "Chọn ngày bắt đầu", <div className="p-3 bg-[#1a1a1d]"><Calendar mode="single" selected={task.startDate || undefined} onSelect={(d) => onUpdate(task._id, 'startDate', d)} className="bg-[#1a1a1d] text-zinc-300 rounded-md border border-white/10" /></div>)}
-                    {renderDetailProp("Ngày kết thúc", CalendarIcon, task.endDate ? format(new Date(task.endDate), "dd/MM/yyyy") : "Chọn ngày kết thúc", <div className="p-3 bg-[#1a1a1d]"><Calendar mode="single" selected={task.endDate || undefined} onSelect={(d) => onUpdate(task._id, 'endDate', d)} className="bg-[#1a1a1d] text-zinc-300 rounded-md border border-white/10" /></div>)}
+                    {renderDetailProp("Người phụ trách", User, task.assignee ? task.assignee.name : "Thêm người phụ trách", <Command className="bg-transparent border-0"><CommandInput placeholder="Tìm..." className="h-8 text-zinc-300" /><CommandList className="max-h-[300px]"><CommandEmpty className="text-zinc-500 text-xs py-2 px-4 shadow-none">Không tìm thấy</CommandEmpty><CommandGroup>
+                        {members.map(m => (
+                          <CommandItem key={m._id} onSelect={() => onUpdate(task._id, 'assignee', m)} className="hover:bg-white/5 cursor-pointer text-zinc-300">
+                            <Avatar className="h-5 w-5 mr-3 border border-white/5">
+                                <AvatarImage src={m.avatar}/>
+                                <AvatarFallback className="bg-cyan-100 dark:bg-cyan-900/10 text-cyan-600 dark:text-cyan-400 text-[10px] font-bold uppercase">{m.name?.charAt(0) || "?"}</AvatarFallback>
+                            </Avatar>
+                            {m.name}
+                          </CommandItem>
+                        ))}
+                    </CommandGroup></CommandList></Command>)}
+                    <div className="grid grid-cols-3 items-center py-2"><div className="text-zinc-500 text-sm font-medium col-span-1">Người tạo</div><div className="col-span-2 flex items-center gap-2 px-2"><Avatar className="h-5 w-5"><AvatarFallback className="text-[9px] bg-cyan-100 dark:bg-cyan-900/10 text-cyan-600 dark:text-cyan-400 font-bold uppercase">{task.creator?.name ? task.creator.name.charAt(0).toUpperCase() : '?'}</AvatarFallback></Avatar><span className="text-sm text-zinc-300">{task.creator?.name || 'Unknown'}</span></div></div>
+                    {renderDetailProp("Ngày bắt đầu", CalendarIcon, task.startDate ? format(new Date(task.startDate), "dd/MM/yyyy") : "Chọn ngày bắt đầu", 
+                        <div className="w-auto p-0 bg-white dark:bg-[#0f0f11] border border-zinc-200 dark:border-white/10 z-[100] shadow-2xl rounded-2xl overflow-hidden">
+                            <div className="p-4 border-b border-zinc-100 dark:border-white/5 bg-zinc-50/50 dark:bg-white/[0.02]">
+                                <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Ngày bắt đầu</div>
+                                <div className="text-xs text-zinc-400 mt-0.5">Ngày bắt đầu không được nhỏ hơn hôm nay</div>
+                            </div>
+                            <Calendar 
+                                mode="single" 
+                                selected={task.startDate || undefined} 
+                                onSelect={(d) => onUpdate(task._id, 'startDate', d)} 
+                                disabled={(date) => {
+                                    const today = new Date();
+                                    today.setHours(0, 0, 0, 0);
+                                    return date < today;
+                                }}
+                                className="p-3 text-zinc-300" 
+                            />
+                        </div>
+                    )}
+                    {renderDetailProp("Ngày kết thúc", CalendarIcon, task.endDate ? format(new Date(task.endDate), "dd/MM/yyyy") : "Chọn ngày kết thúc", 
+                        <div className="w-auto p-0 bg-white dark:bg-[#0f0f11] border border-zinc-200 dark:border-white/10 z-[100] shadow-2xl rounded-2xl overflow-hidden">
+                            <div className="p-4 border-b border-zinc-100 dark:border-white/5 bg-zinc-50/50 dark:bg-white/[0.02]">
+                                <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Ngày kết thúc</div>
+                                <div className="text-xs text-zinc-400 mt-0.5">Phải lớn hơn hoặc bằng ngày bắt đầu ({task.startDate ? format(new Date(task.startDate), "dd/MM") : "hôm nay"})</div>
+                            </div>
+                            <Calendar 
+                                mode="single" 
+                                selected={task.endDate || undefined} 
+                                onSelect={(d) => onUpdate(task._id, 'endDate', d)} 
+                                disabled={(date) => {
+                                    const baseDate = task.startDate ? new Date(task.startDate) : new Date();
+                                    baseDate.setHours(0, 0, 0, 0);
+                                    return date < baseDate;
+                                }}
+                                className="p-3 text-zinc-300" 
+                            />
+                        </div>
+                    )}
                     {renderDetailProp("Ước tính", Triangle, task.estimate ? `${task.estimate}h` : "Chọn", <div className="p-1 grid grid-cols-4 gap-1">{estimates.map(est => <div key={est} onClick={() => onUpdate(task._id, 'estimate', est)} className="px-2 py-1.5 hover:bg-white/5 text-xs text-zinc-300 rounded cursor-pointer text-center border border-white/5">{est}h</div>)}</div>)}
                 </div>
 

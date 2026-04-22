@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Briefcase, Users, Plus, Trash2, KeyRound, UserPlus, Save, Loader2, X
 } from 'lucide-react';
@@ -39,10 +39,68 @@ export function ProjectCreateDialog({ open, onOpenChange, onSuccess }: ProjectCr
   const [description, setDescription] = useState('');
   const [newMemberName, setNewMemberName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [paginationData, setPaginationData] = useState<any>(null);
 
-  const [members, setMembers] = useState<Member[]>([
-    { id: '1', name: 'Nguyễn Văn A', email: 'vana@batek.vn', avatar: 'https://github.com/shadcn.png' },
-  ]);
+  const [members, setMembers] = useState<any[]>([]);
+
+  // 1. Fetch current user to add as manager/first member
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const res = await fetch('/api/account');
+        const json = await res.json();
+        if (json.success) {
+          const u = json.data;
+          setMembers([{
+            _id: u._id,
+            name: `${u.lastname} ${u.firstname}`.trim() || u.email,
+            email: u.email,
+            avatar: u.avatar || '',
+            isOwner: true
+          }]);
+        }
+      } catch (error) {
+        console.error("Lỗi lấy thông tin người dùng hiện tại:", error);
+      }
+    };
+    if (open) fetchCurrentUser();
+  }, [open]);
+
+  // 2. Real-time User Search with Pagination
+  const searchUsers = async (pageValue: number = 1) => {
+    try {
+      const res = await fetch(`/api/user/search?q=${newMemberName}&page=${pageValue}&limit=10`);
+      const data = await res.json();
+      setSearchResults(data.users || []);
+      setPaginationData({
+        total: data.total,
+        totalPages: data.totalPages,
+        page: data.page
+      });
+      setCurrentPage(data.page);
+    } catch (error) {
+      console.error("Search error:", error);
+    }
+  };
+
+  useEffect(() => {
+    const debounce = setTimeout(() => searchUsers(1), 300);
+    return () => clearTimeout(debounce);
+  }, [newMemberName, open]); // Re-search from page 1 when name or dialog opens
+
+  const handleFocus = () => {
+    if (searchResults.length === 0) {
+      searchUsers(1);
+    }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= (paginationData?.totalPages || 1)) {
+      searchUsers(newPage);
+    }
+  };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -53,21 +111,26 @@ export function ProjectCreateDialog({ open, onOpenChange, onSuccess }: ProjectCr
     }
   };
 
-  const handleAddMember = () => {
-    if (!newMemberName.trim()) return;
-    const newMember: Member = {
-      id: Math.random().toString(),
-      name: newMemberName,
-      email: `${newMemberName.toLowerCase().replace(/\s/g, '')}@batek.vn`,
-      avatar: '',
+  const handleAddMember = (user: any) => {
+    if (members.find((m: any) => m._id === user._id)) return toast.warning("Đã có trong danh sách");
+    const newMember = { 
+      ...user, 
+      name: `${user.lastname} ${user.firstname}`.trim() || user.email 
     };
     setMembers([...members, newMember]);
     setNewMemberName('');
+    setSearchResults([]);
+  };
+
+  const removeMember = (id: string) => {
+    if (members.find(m => m._id === id)?.isOwner) return toast.error("Không thể xóa người quản lý dự án");
+    setMembers(members.filter(m => m._id !== id));
   };
 
   const handleSave = async () => {
     if (!projectName.trim()) return toast.error("Vui lòng nhập tên dự án");
     if (!projectKey.trim()) return toast.error("Vui lòng nhập mã Key");
+    if (!description.trim()) return toast.error("Vui lòng nhập mô tả dự án");
 
     try {
       setIsLoading(true);
@@ -75,7 +138,8 @@ export function ProjectCreateDialog({ open, onOpenChange, onSuccess }: ProjectCr
       const payload = {
         title: projectName,
         key: projectKey,
-        description: description
+        description: description,
+        members: members.map(m => m._id) // Send real IDs
       };
 
       await axios.post('/api/projects', payload);
@@ -87,6 +151,7 @@ export function ProjectCreateDialog({ open, onOpenChange, onSuccess }: ProjectCr
       setProjectName(''); 
       setProjectKey(''); 
       setDescription('');
+      setMembers([]);
       
       if (onSuccess) onSuccess();
     } catch (error: any) {
@@ -179,7 +244,9 @@ export function ProjectCreateDialog({ open, onOpenChange, onSuccess }: ProjectCr
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-zinc-500 dark:text-zinc-400 text-[10px] uppercase font-bold tracking-wider">Mô tả chi tiết</Label>
+                    <Label className="text-zinc-500 dark:text-zinc-400 text-[10px] uppercase font-bold tracking-wider">
+                      Mô tả chi tiết <span className="text-red-500">*</span>
+                    </Label>
                     <Textarea
                       placeholder="Mô tả mục tiêu, phạm vi dự án..."
                       className={cn(inputClass, "min-h-[140px] resize-none text-sm p-3 leading-relaxed")}
@@ -204,7 +271,7 @@ export function ProjectCreateDialog({ open, onOpenChange, onSuccess }: ProjectCr
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col gap-3 pt-4 px-4 pb-4 overflow-hidden">
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 relative">
                     <div className="relative flex-1">
                       <UserPlus className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
                       <Input
@@ -212,12 +279,62 @@ export function ProjectCreateDialog({ open, onOpenChange, onSuccess }: ProjectCr
                         className={cn(inputClass, "pl-9 h-10 text-sm")}
                         value={newMemberName}
                         onChange={(e) => setNewMemberName(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddMember()}
+                        onFocus={handleFocus}
                       />
+
+                      {/* Search Results Dropdown */}
+                      {searchResults.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                          <div className="py-1 overflow-y-auto max-h-[250px] custom-scrollbar">
+                            {searchResults.map((user) => (
+                              <button
+                                key={user._id}
+                                onClick={() => handleAddMember(user)}
+                                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors text-left"
+                              >
+                                <Avatar className="h-6 w-6">
+                                  <AvatarImage src={user.avatar} />
+                                  <AvatarFallback className="bg-cyan-100 dark:bg-cyan-900/10 text-cyan-600 dark:text-cyan-400 text-[8px] font-bold uppercase">{user.lastname?.charAt(0).toUpperCase() || "?"}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-xs font-bold truncate">{user.lastname} {user.firstname}</span>
+                                  <span className="text-[10px] text-zinc-500 truncate">{user.email}</span>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Pagination Controls */}
+                          {paginationData && paginationData.totalPages > 1 && (
+                            <div className="px-2 py-2 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-black/20 flex items-center justify-between">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handlePageChange(currentPage - 1); }}
+                                disabled={currentPage === 1}
+                                className="h-7 px-2 text-[10px] gap-1 hover:bg-white dark:hover:bg-white/5"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>
+                                Trước
+                              </Button>
+                              <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">
+                                Trang {currentPage} / {paginationData.totalPages}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handlePageChange(currentPage + 1); }}
+                                disabled={currentPage === paginationData.totalPages}
+                                className="h-7 px-2 text-[10px] gap-1 hover:bg-white dark:hover:bg-white/5"
+                              >
+                                Sau
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg>
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <Button size="icon" onClick={handleAddMember} className="shrink-0 h-10 w-10 bg-green-600 hover:bg-green-500 text-white border-0 shadow-md shadow-green-500/20">
-                      <Plus className="h-4 w-4" />
-                    </Button>
                   </div>
 
                   <div className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 overflow-hidden relative min-h-[150px]">
@@ -231,25 +348,35 @@ export function ProjectCreateDialog({ open, onOpenChange, onSuccess }: ProjectCr
                         </TableHeader>
                         <TableBody>
                           {members.map((m) => (
-                            <TableRow key={m.id} className="border-zinc-100 dark:border-white/5 hover:bg-zinc-50 dark:hover:bg-white/5 group h-12 transition-colors">
+                            <TableRow key={m._id} className="border-zinc-100 dark:border-white/5 hover:bg-zinc-50 dark:hover:bg-white/5 group h-12 transition-colors">
                               <TableCell className="py-1.5 pl-3">
                                 <div className="flex items-center gap-3">
                                   <Avatar className="h-7 w-7 border border-zinc-200 dark:border-white/10">
                                     <AvatarImage src={m.avatar} />
-                                    <AvatarFallback className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 text-[10px] font-bold">
-                                      {m.name[0]}
+                                    <AvatarFallback className="bg-cyan-100 dark:bg-cyan-900/10 text-cyan-600 dark:text-cyan-400 text-[10px] font-bold uppercase">
+                                      {m.name ? m.name.charAt(0).toUpperCase() : "?"}
                                     </AvatarFallback>
                                   </Avatar>
                                   <div className="overflow-hidden">
-                                    <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 truncate leading-none">{m.name}</p>
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 truncate leading-none">{m.name}</p>
+                                      {m.isOwner && <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400 font-extrabold uppercase tracking-wider">Leader</span>}
+                                    </div>
                                     <p className="text-[10px] text-zinc-500 dark:text-zinc-500 truncate leading-tight mt-1">{m.email}</p>
                                   </div>
                                 </div>
                               </TableCell>
-                              <TableCell className="pr-1 text-right">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all">
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                              <TableCell className="pr-2 text-right">
+                                {!m.isOwner && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={() => removeMember(m._id)}
+                                    className="h-8 w-8 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all rounded-lg"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
                               </TableCell>
                             </TableRow>
                           ))}

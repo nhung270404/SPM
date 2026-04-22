@@ -13,7 +13,8 @@ export async function GET(
     await connectToDatabase();
 
     const project = await Project.findById(id)
-      .populate('manager', 'firstname lastname email'); // Lấy thông tin người quản lý
+      .populate('manager', 'firstname lastname email avatar')
+      .populate('members', 'firstname lastname email avatar'); // Lấy thông tin thành viên
 
     if (!project) {
       return NextResponse.json({ error: 'Không tìm thấy dự án' }, { status: 404 });
@@ -36,15 +37,17 @@ export async function PUT(
     await connectToDatabase();
     const body = await request.json();
 
-    // Tìm và cập nhật
+    // Tìm và cập nhật - Chỉ cập nhật các trường có trong body
+    const updateData: any = {};
+    if (body.title !== undefined) updateData.title = body.title;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.avatar !== undefined) updateData.avatar = body.avatar;
+    if (body.coverImage !== undefined) updateData.coverImage = body.coverImage;
+    if (body.members !== undefined) updateData.members = body.members;
+
     const updatedProject = await Project.findByIdAndUpdate(
       id,
-      {
-        title: body.title,
-        description: body.description,
-        // Không cho phép sửa 'key' để tránh lỗi ID task
-        // manager: body.manager // Nếu muốn đổi manager thì mở comment này
-      },
+      updateData,
       { new: true } // Trả về dữ liệu mới sau khi update
     );
 

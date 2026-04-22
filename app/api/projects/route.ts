@@ -24,7 +24,8 @@ export async function GET() {
     // 3. Query
     const projects = await Project.find({})
       .sort({ createdAt: -1 })
-      .populate('manager', 'firstname lastname email'); // Populate cần model User đã tồn tại
+      .populate('manager', 'firstname lastname email avatar')
+      .populate('members', 'firstname lastname email avatar'); // Populate thêm thông tin thành viên
 
     return NextResponse.json(projects);
 
@@ -42,7 +43,7 @@ export async function GET() {
 export async function POST(req: NextRequest, context: any) {
   return withApiHandler(req, context, async (req, user, userId) => {
     try {
-      const { title, description, key } = await req.json();
+      const { title, description, key, members: bodyMembers } = await req.json();
 
       if (!title || !key) {
         return NextResponse.json(
@@ -60,12 +61,15 @@ export async function POST(req: NextRequest, context: any) {
         );
       }
 
+      // Đảm bảo manager luôn nằm trong members và không bị trùng
+      const projectMembers = Array.from(new Set([userId, ...(bodyMembers || [])]));
+
       const newProject = await Project.create({
         title,
         description,
         key: key.toUpperCase(),
         manager: userId,
-        members: [userId], // Tự động thêm manager làm member đầu tiên
+        members: projectMembers,
         taskCount: 0
       });
 

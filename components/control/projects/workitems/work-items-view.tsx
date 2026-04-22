@@ -27,9 +27,21 @@ export function WorkItemsView({ projectId: _projectId }: { projectId: string }) 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [parentTaskForSub, setParentTaskForSub] = useState<Task | null>(null);
-  const [initialStatus, setInitialStatus] = useState("Todo");
+  const [initialStatus, setInitialStatus] = useState("Backlog");
 
   useEffect(() => { setWinReady(true); }, []);
+
+  // Helper: Chuẩn hóa dữ liệu công việc (Ghép tên, chuyển đổi Date)
+  const normalizeTask = (t: any) => ({
+    ...t,
+    startDate: t.startDate ? new Date(t.startDate) : null,
+    endDate: t.dueDate ? new Date(t.dueDate) : (t.endDate ? new Date(t.endDate) : null),
+    estimate: (t.estimate !== null && t.estimate !== undefined) ? Number(t.estimate) : null,
+    assignee: t.assignee && typeof t.assignee === 'object' ? {
+      ...t.assignee,
+      name: `${t.assignee.lastname || ''} ${t.assignee.firstname || ''}`.trim() || t.assignee.email
+    } : t.assignee
+  });
 
   const fetchProject = async () => {
     try {
@@ -44,11 +56,7 @@ export function WorkItemsView({ projectId: _projectId }: { projectId: string }) 
     try {
       setIsLoading(true);
       const res = await axios.get(`/api/projects/${_projectId}/workitems`);
-      const mappedTasks = res.data.map((t: any) => ({
-        ...t,
-        startDate: t.startDate ? new Date(t.startDate) : null,
-        endDate: t.dueDate ? new Date(t.dueDate) : null
-      }));
+      const mappedTasks = res.data.map((t: any) => normalizeTask(t));
       setTasks(mappedTasks);
     } catch (err) {
       console.error(err);
@@ -117,7 +125,15 @@ export function WorkItemsView({ projectId: _projectId }: { projectId: string }) 
     else payload[field] = value;
 
     try {
-      await axios.patch(`/api/projects/${_projectId}/workitems`, payload);
+      const res = await axios.patch(`/api/projects/${_projectId}/workitems`, payload);
+      // Cập nhật lại dữ liệu từ server trả về để đảm bảo đồng bộ (VD: assignee đầy đủ)
+      if (res.data) {
+        const updated = normalizeTask(res.data);
+        setTasks(prev => prev.map(t => t._id === taskId ? updated : t));
+        if (selectedTask?._id === taskId) {
+          setSelectedTask(updated);
+        }
+      }
     } catch (err) {
       console.error(err);
       toast.error("Không lưu được thay đổi");
@@ -125,12 +141,17 @@ export function WorkItemsView({ projectId: _projectId }: { projectId: string }) 
     }
   };
 
-  const handleCreateSuccess = (task: Task, isEdit: boolean) => {
-    fetchTasks(); // Làm mới toàn bộ danh sách để đảm bảo đồng bộ
+  const handleCreateSuccess = (taskRaw: any, isEdit: boolean) => {
+    const task = normalizeTask(taskRaw);
+    if (isEdit) {
+      setTasks(prev => prev.map(t => t._id === task._id ? task : t));
+    } else {
+      setTasks(prev => [task, ...prev]);
+    }
     toast.success(isEdit ? "Đã cập nhật công việc" : "Đã tạo công việc mới");
   };
 
-  const openCreateDialog = (status = "Todo", parent: Task | null = null) => {
+  const openCreateDialog = (status = "Backlog", parent: Task | null = null) => {
     setEditTask(null);
     setParentTaskForSub(parent);
     setInitialStatus(status);
@@ -192,6 +213,10 @@ export function WorkItemsView({ projectId: _projectId }: { projectId: string }) 
         <div className="flex-1 relative min-h-0 z-10">
           <WorkItemsBoard 
             tasks={tasks}
+            members={project?.members?.map((m: any) => ({
+              ...m,
+              name: `${m.lastname} ${m.firstname}`.trim() || m.email
+            })) || []}
             onDragEnd={handleDragEnd}
             onSelectTask={setSelectedTask}
             onEditTask={openEditDialog}
@@ -205,6 +230,7 @@ export function WorkItemsView({ projectId: _projectId }: { projectId: string }) 
           open={isCreateOpen}
           onOpenChange={setIsCreateOpen}
           projectId={_projectId}
+          projectName={project?.title}
           onSuccess={handleCreateSuccess}
           editTask={editTask}
           parentTaskForSub={parentTaskForSub}
@@ -217,6 +243,10 @@ export function WorkItemsView({ projectId: _projectId }: { projectId: string }) 
               <WorkItemsDetailPanel 
                 task={selectedTask}
                 tasks={tasks}
+                members={project?.members?.map((m: any) => ({
+                  ...m,
+                  name: `${m.lastname} ${m.firstname}`.trim() || m.email
+                })) || []}
                 onClose={() => setSelectedTask(null)}
                 onUpdate={handleUpdateTask}
                 onCreateSubtask={() => openCreateDialog('Todo', selectedTask)}

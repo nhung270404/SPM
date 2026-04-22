@@ -32,11 +32,11 @@ export function NavMain({
   return (
     <SidebarGroup>
       {!isCollapsed && (
-        <SidebarGroupLabel className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-sidebar-foreground/50">
+        <SidebarGroupLabel className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/50 text-xs">
           Danh mục chính
         </SidebarGroupLabel>
       )}
-      <SidebarMenu className="gap-2">
+      <SidebarMenu className="gap-3">
         {items.map((item) => (
           <Collapsible key={item.title} asChild defaultOpen={item.isActive}>
             <SidebarMenuItem>
@@ -44,17 +44,15 @@ export function NavMain({
                 asChild 
                 tooltip={t(item.title)}
                 className={cn(
-                  "relative h-11 px-3 transition-colors duration-200 group/item",
+                  "relative h-11 transition-all duration-300 group/item",
+                  isCollapsed ? "justify-center p-0" : "px-3",
                   item.isActive 
-                    ? "sidebar-active-protrude text-primary font-bold hover:text-primary" 
+                    ? (isCollapsed ? "bg-white dark:bg-slate-800 text-primary shadow-sm rounded-lg" : "sidebar-active-protrude text-primary font-bold hover:text-primary") 
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-xl"
                 )}
               >
-                <Link href={item.url} className="flex items-center gap-3">
-                  <div className={cn(
-                    "flex items-center justify-center size-8 rounded-lg transition-colors duration-200",
-                    item.isActive ? "bg-cyan-100" : "bg-sidebar-accent/50"
-                  )}>
+                <Link href={item.url} className={cn("flex items-center", isCollapsed ? "justify-center" : "gap-3")}>
+                  <div className="flex items-center justify-center size-8 rounded-lg transition-colors duration-200">
                     {typeof item.icon === 'string' ? (
                       <DynamicIcon name={item.icon} className={cn("size-4 shrink-0", item.isActive ? "text-primary" : "text-sidebar-foreground")} />
                     ) : (

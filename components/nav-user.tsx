@@ -44,17 +44,17 @@ export function NavUser({ user }: { user: IUser }) {
                 <SidebarMenuButton
                   size="lg"
                   className={cn(
-                    "relative h-14 w-full rounded-xl transition-colors duration-200",
+                    "relative h-14 w-full rounded-xl transition-all duration-300",
                     "hover:bg-white/10 text-sidebar-foreground",
-                    isCollapsed ? "justify-center px-0" : "px-3"
+                    isCollapsed ? "justify-center p-0" : "px-3"
                   )}
                   tooltip={`${user.firstname} ${user.lastname}`}
                 >
                   <div className="relative flex-shrink-0">
                     <Avatar className="h-9 w-9 rounded-lg border-2 border-primary/20 shadow-sm">
                       <AvatarImage src={user.avatar} alt={`${user.firstname} ${user.lastname}`} />
-                      <AvatarFallback className="rounded-lg bg-white text-primary font-bold text-xs uppercase">
-                        {user.firstname.charAt(0)}
+                      <AvatarFallback className="rounded-lg bg-cyan-100 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-bold text-xs uppercase">
+                        {user.firstname?.charAt(0).toUpperCase() || "?"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-sidebar bg-green-500" />
@@ -83,8 +83,8 @@ export function NavUser({ user }: { user: IUser }) {
                   <div className="flex items-center gap-3 px-3 py-3 bg-cyan-50/50 rounded-lg mb-1">
                     <Avatar className="h-10 w-10 rounded-lg border-2 border-primary/20">
                       <AvatarImage src={user.avatar} alt={`${user.firstname} ${user.lastname}`} />
-                      <AvatarFallback className="rounded-lg bg-white text-primary font-bold uppercase">
-                        {user.firstname.charAt(0)}
+                      <AvatarFallback className="rounded-lg bg-cyan-100 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-bold uppercase">
+                        {user.firstname?.charAt(0).toUpperCase() || "?"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
@@ -106,10 +106,6 @@ export function NavUser({ user }: { user: IUser }) {
                     <span className="font-medium text-sm text-sidebar-foreground">Tài khoản</span>
                   </DropdownMenuItem>
 
-                  <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer hover:bg-black/5 transition-colors">
-                    <Bell className="h-4 w-4 text-sidebar-foreground/70" />
-                    <span className="font-medium text-sm text-sidebar-foreground">Thông báo</span>
-                  </DropdownMenuItem>
                 </DropdownMenuGroup>
 
                 <DropdownMenuSeparator className="my-1 bg-black/5" />

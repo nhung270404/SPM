@@ -6,8 +6,10 @@ export interface IProject extends Document {
   description?: string;
   key: string;
   taskCount: number;
-  manager: mongoose.Types.ObjectId;   // <--- QUAN TRỌNG: Phải có dòng này
+  manager: mongoose.Types.ObjectId;
   members: mongoose.Types.ObjectId[];
+  avatar?: string;
+  coverImage?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,6 +48,12 @@ const ProjectSchema: Schema<IProject> = new Schema(
         ref: 'User',
       },
     ],
+    avatar: {
+      type: String,
+    },
+    coverImage: {
+      type: String,
+    },
   },
   {
     timestamps: true,

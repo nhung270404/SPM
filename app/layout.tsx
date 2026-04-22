@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
 import { AppContextProvider } from '@/context/app-context';
@@ -10,17 +10,10 @@ import { ThemeProvider } from '@/components/theme-provider';
 import LangLayout from '@/app/lang';
 import { UserProvider } from '@/context/user-context';
 
-// [ĐÃ XÓA] Import BackgroundEffect để bỏ hiệu ứng nhấp nháy
-
 export const dynamic = 'force-dynamic';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const inter = Inter({
+  variable: '--font-inter',
   subsets: ['latin'],
 });
 
@@ -40,11 +33,11 @@ export default async function RootLayout({
   const config: IConfig = await GetConfig();
 
   return (
-      <html lang="vi" suppressHydrationWarning>
+      <html lang="vi" suppressHydrationWarning className={inter.variable}>
 
       <body
           suppressHydrationWarning
-          className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground min-h-screen`}>
+          className="antialiased bg-background text-foreground min-h-screen">
 
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
         <Toaster />

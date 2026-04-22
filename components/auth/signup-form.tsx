@@ -78,7 +78,7 @@ export function SignupForm() {
                 return;
             }
 
-            toast.success('Đăng ký thành công!');
+            toast.success('Đăng ký thành công!', { position: 'top-center' });
             setTimeout(() => router.push('/login'), 800);
         } catch (err) {
             console.error("Lỗi ngoại lệ:", err);

@@ -68,14 +68,22 @@ export const createWorkItem = async (projectId: string, body: any) => {
         taskId: newTaskId,
         startDate: body.startDate,
         dueDate: body.dueDate,
+        estimate: body.estimate,
+        parentId: body.parentId || null,
         assignee: body.assignee || null
     });
 
     await Project.findByIdAndUpdate(projectId, { taskCount: newCount });
 
+    // Populate assignee before returning
+    const populatedTask = await WorkItem.findById(newTask._id)
+        .populate('assignee', 'firstname lastname email avatar');
+
+    if (!populatedTask) return newTask.toObject();
+
     return {
-        ...newTask.toObject(),
-        status: toFrontendStatus(newTask.status),
+        ...populatedTask.toObject(),
+        status: toFrontendStatus(populatedTask.status),
     };
 };
 
@@ -118,7 +126,7 @@ export const updateWorkItem = async (projectId: string, body: any) => {
         { _id: workItemId, project: projectId },
         { $set: updateData },
         { new: true }
-    ).populate('assignee', 'firstname lastname email');
+    ).populate('assignee', 'firstname lastname email avatar');
 
     if (!updatedTask) {
         throw new Error('Task not found');

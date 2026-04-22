@@ -23,8 +23,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
 
-// Import Data
-import { MOCK_USERS } from './user-data';
 
 // --- SUB-COMPONENT: STAT CARD ---
 function StatCard({ title, value, icon: Icon, description, trend, colorClass }: {
@@ -41,11 +39,11 @@ function StatCard({ title, value, icon: Icon, description, trend, colorClass }: 
       <CardContent className="p-5 lg:p-6">
         <div className="flex justify-between items-start">
           <div className="space-y-1.5">
-            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{title}</p>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{title}</p>
             <h3 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-none">{value}</h3>
             <div className="flex items-center gap-1.5 pt-1">
-              {trend && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-500">{trend}</span>}
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">{description}</p>
+              {trend && <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-500">{trend}</span>}
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">{description}</p>
             </div>
           </div>
           <div className={cn("p-3 rounded-xl bg-white/80 dark:bg-slate-800 shadow-sm group-hover:scale-110 transition-transform duration-300", colorClass.replace('bg-', 'text-'))}>
@@ -74,10 +72,10 @@ export function UserManagementView() {
           id: u._id,
           name: `${u.firstname} ${u.lastname}`,
           email: u.email,
-          role: u.roles && u.roles.length > 0 ? u.roles[0].title : 'Nhân viên',
+          role: u.roles && u.roles.length > 0 ? (u.roles[0].title || u.roles[0].name) : (u.position || 'Nhân viên'),
           department: u.department || 'Chưa xác định',
           status: u.status === 'active' ? 'Active' : 'Offline',
-          lastActive: u.updatedAt ? new Date(u.updatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Vừa xong',
+          lastActive: u.updatedAt ? new Date(u.updatedAt).toLocaleDateString('vi-VN') : 'Vừa xong',
           avatar: u.avatar || ''
         }));
         setUsers(mappedData);
@@ -139,9 +137,9 @@ export function UserManagementView() {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <div className="h-1 w-8 bg-[#36caf1] rounded-full" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#36caf1]">Hệ thống quản trị SPM</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-[#36caf1]">Hệ thống quản trị SPM</span>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl lg:text-5xl">
+          <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             Nhân sự ZenWork
           </h1>
           <p className="text-slate-500 dark:text-slate-400 font-medium text-sm lg:text-base max-w-2xl leading-relaxed">
@@ -185,7 +183,6 @@ export function UserManagementView() {
           value={totalUsers}
           icon={Users}
           description="Thành viên tổ chức"
-          trend="+2%"
           colorClass="bg-[#36caf1]"
         />
         <StatCard
@@ -193,7 +190,6 @@ export function UserManagementView() {
           value={activeUsers}
           icon={UserCheck}
           description="Hiện hành đang online"
-          trend="85%"
           colorClass="bg-emerald-500"
         />
         <StatCard
@@ -254,8 +250,8 @@ export function UserManagementView() {
                             <div className="flex items-center gap-4">
                               <Avatar className="h-11 w-11 rounded-xl shadow-sm ring-2 ring-white dark:ring-slate-800 group-hover/row:scale-105 transition-transform duration-300">
                                 <AvatarImage src={user.avatar} className="object-cover" />
-                                <AvatarFallback className="bg-gradient-to-br from-[#36caf1] to-blue-500 text-white font-bold text-base">
-                                  {user.name[0]}
+                                <AvatarFallback className="bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 font-bold text-base uppercase">
+                                  {user.name ? user.name.charAt(0).toUpperCase() : "?"}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex flex-col min-w-0">
@@ -352,7 +348,7 @@ export function UserManagementView() {
           </div>
         </CardContent>
 
-        <div className="p-6 bg-slate-50/20 dark:bg-slate-900/10 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="p-6 bg-slate-50/20 dark:bg-slate-900/10 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end">
           <div className="flex gap-1.5">
              <Button variant="ghost" size="sm" className="h-8 text-[11px] font-bold rounded-lg text-slate-400" disabled>Trước</Button>
              <Button variant="outline" size="sm" className="h-8 w-8 text-[11px] font-bold rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm transition-all" disabled>1</Button>

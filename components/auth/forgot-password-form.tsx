@@ -37,7 +37,7 @@ export function ForgotPasswordForm() {
       // Gọi API gửi mail
       await POST_METHOD('/api/forgot-password', { email });
 
-      toast.success("Đã gửi link đổi mật khẩu! Vui lòng kiểm tra Email.");
+      toast.success("Đã gửi link đổi mật khẩu! Vui lòng kiểm tra Email.", { position: 'top-center' });
 
       // Chờ 2s rồi quay về Login
       setTimeout(() => {

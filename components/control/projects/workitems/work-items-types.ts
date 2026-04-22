@@ -52,10 +52,6 @@ export const STATUS_TRANSITIONS: Record<string, string[]> = {
   'Cancel': ['Todo'],
 };
 
-export const estimates = [1, 2, 3, 5, 8, 13, 21, 34];
+export const estimates = [1, 2, 3, 5, 8, 13, -1];
 
-export const mockMembers = [
-  { id: '1', _id: '1', name: 'Nguyễn Văn A', avatar: '' },
-  { id: '2', _id: '2', name: 'Trần Thị B', avatar: '' },
-  { id: '3', _id: '3', name: 'Lê Văn C', avatar: '' },
-];
+

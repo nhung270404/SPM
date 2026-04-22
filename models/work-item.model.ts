@@ -11,6 +11,7 @@ export interface IWorkItem extends Document {
   startDate?: Date;
   dueDate?: Date;
   estimate?: number;
+  parentId?: mongoose.Types.ObjectId; // Link tới Task cha (nếu là subtask)
   createdAt: Date;
   updatedAt: Date;
   taskId: string;
@@ -58,6 +59,11 @@ const WorkItemSchema: Schema<IWorkItem> = new Schema(
     },
     estimate: {
       type: Number,
+    },
+    parentId: {
+      type: Schema.Types.ObjectId,
+      ref: 'WorkItem',
+      index: true,
     },
   },
   {

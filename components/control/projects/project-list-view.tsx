@@ -47,7 +47,14 @@ export function ProjectListView() {
     try {
       if (showLoading) setIsLoading(true);
       const response = await axios.get('/api/projects');
-      setProjects(response.data);
+      const mappedData = response.data.map((p: any) => ({
+        ...p,
+        members: (p.members || []).map((m: any) => ({
+          ...m,
+          name: `${m.lastname} ${m.firstname}`.trim() || m.email || "Unknown"
+        }))
+      }));
+      setProjects(mappedData);
     } catch (error) {
       console.error("Lỗi API:", error);
     } finally {
@@ -201,8 +208,8 @@ export function ProjectListView() {
                   {project.members?.slice(0, 3).map((member, i) => (
                     <Avatar key={i} className="h-8 w-8 border-2 border-white dark:border-slate-900 shadow-sm">
                       <AvatarImage src={member.avatar} />
-                      <AvatarFallback className="text-[10px] bg-cyan-100 text-cyan-700 dark:bg-slate-800 dark:text-cyan-400 font-bold">
-                        {member.name?.substring(0, 2).toUpperCase()}
+                      <AvatarFallback className="bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 text-[10px] font-bold uppercase">
+                        {member.name?.charAt(0).toUpperCase() || "?"}
                       </AvatarFallback>
                     </Avatar>
                   ))}

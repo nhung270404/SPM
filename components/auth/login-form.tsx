@@ -41,7 +41,7 @@ export function LoginForm() {
 
         try {
             await POST_METHOD('/api/login', formData);
-            toast.success("Đăng nhập thành công!");
+            toast.success("Đăng nhập thành công!", { position: 'top-center' });
             router.push(searchParams.get('redirect') || '/control');
         } catch (err: any) {
             console.error(err);

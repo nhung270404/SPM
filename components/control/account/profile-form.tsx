@@ -80,8 +80,9 @@ export function ProfileForm() {
 
       toast.success('Đã cập nhật thông tin tài khoản thành công!');
       await refreshUser();
-    } catch (err: any) {
-      toast.error(err.message || 'Cập nhật thất bại');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Cập nhật thất bại';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -89,14 +90,13 @@ export function ProfileForm() {
 
   // Hàm lấy chữ cái đầu của tên
   const getInitials = () => {
+    if (user?.firstname) {
+      return user.firstname.charAt(0).toUpperCase();
+    }
     if (user?.fullName) {
-      const parts = user.fullName.split(' ');
-      if (parts.length >= 2) {
-        return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-      }
       return user.fullName.charAt(0).toUpperCase();
     }
-    return "US";
+    return "?";
   };
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -138,7 +138,7 @@ export function ProfileForm() {
             {avatarUrl ? (
               <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
             ) : (
-              <div className="h-full w-full bg-cyan-100 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center text-2xl font-black">
+              <div className="h-full w-full bg-cyan-100 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center text-3xl font-black uppercase">
                 {getInitials()}
               </div>
             )}

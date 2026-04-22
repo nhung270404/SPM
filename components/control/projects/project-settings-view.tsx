@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft, Settings2, Users, Trash2,
-  Save, Loader2, Camera, Search, UserPlus, AlertTriangle
+  Save, Loader2, Camera, Search, UserPlus, AlertTriangle,
+  ChevronLeft, ChevronRight, Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,73 +44,189 @@ export function ProjectSettingsView({ projectId }: { projectId: string }) {
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [paginationData, setPaginationData] = useState<any>(null);
 
   const coverInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. Mock Data Loading
+  // 1. Fetch Real Project Data
   useEffect(() => {
     const fetchProject = async () => {
       setLoading(true);
-      setTimeout(() => {
-        setProject({
-          _id: projectId,
-          title: "Website Bán Hàng 2026",
-          description: "Dự án phát triển nền tảng thương mại điện tử thế hệ mới.",
-          key: "WEB-2026",
-          coverImage: "https://images.unsplash.com/photo-1635776062127-d379bfcba9f8",
-          avatar: "",
-          status: "active",
-          members: [
-            { _id: 'u1', name: 'Nguyễn Văn A', email: 'vana@batek.vn', avatar: '' },
-            { _id: 'u2', name: 'Trần Thị B', email: 'thib@batek.vn', avatar: '' },
-          ]
-        });
+      try {
+        const res = await fetch(`/api/projects/${projectId}`);
+        if (!res.ok) throw new Error("Không thể tải thông tin dự án");
+        const data = await res.json();
+        
+        // Transform members for UI if needed
+        if (data) {
+          data.members = data.members.map((m: any) => ({
+            ...m,
+            name: `${m.lastname} ${m.firstname}`.trim() || m.email
+          }));
+        }
+        
+        setProject(data);
+      } catch (error: any) {
+        toast.error(error.message);
+      } finally {
         setLoading(false);
-      }, 500);
+      }
     };
     fetchProject();
   }, [projectId]);
 
+  // 2. Real-time User Search with Pagination
+  const searchUsers = async (pageValue: number = 1) => {
+    try {
+      const res = await fetch(`/api/user/search?q=${searchTerm}&page=${pageValue}&limit=10`);
+      const data = await res.json();
+      setSearchResults(data.users || []);
+      setPaginationData({
+        total: data.total,
+        totalPages: data.totalPages,
+        page: data.page
+      });
+      setCurrentPage(data.page);
+    } catch (error) {
+      console.error("Search error:", error);
+    }
+  };
+
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      searchUsers(1);
+    }, 300);
+    return () => clearTimeout(debounce);
+  }, [searchTerm]);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= (paginationData?.totalPages || 1)) {
+      searchUsers(newPage);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'avatar') => {
     const file = e.target.files?.[0];
     if (file) {
-      const previewUrl = URL.createObjectURL(file);
-      if (type === 'cover') setProject({ ...project, coverImage: previewUrl });
-      else setProject({ ...project, avatar: previewUrl });
+      // In a real app, you would upload to S3/Cloudinary here.
+      // For now, we'll use base64 or a fake URL to demonstrate persistence of the field.
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        if (type === 'cover') setProject({ ...project, coverImage: base64String });
+        else setProject({ ...project, avatar: base64String });
+      };
+      reader.readAsDataURL(file);
       toast.success(`Đã chọn ảnh ${type === 'cover' ? 'bìa' : 'đại diện'} mới`);
     }
   };
 
   const handleSave = async () => {
     setSaving(true);
-    setTimeout(() => {
+    try {
+      // Prepare payload: map members back to ObjectIDs
+      const payload = {
+        ...project,
+        members: project.members.map((m: any) => m._id)
+      };
+
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error("Cập nhật thất bại");
+      
+      toast.success("Đã cập nhật dự án thành công!");
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
       setSaving(false);
-      toast.success("Đã cập nhật thành công!");
-    }, 1000);
+    }
   };
 
-  const confirmDeleteMember = () => {
-    const updatedMembers = project.members.filter((m: any) => m._id !== memberToDelete._id);
-    setProject({ ...project, members: updatedMembers });
-    toast.success(`Đã xóa ${memberToDelete.name}`);
-    setMemberToDelete(null);
+  const confirmDeleteMember = async () => {
+    if (!memberToDelete) return;
+    setSaving(true);
+    try {
+      const updatedMembersIds = project.members
+        .filter((m: any) => m._id !== memberToDelete._id)
+        .map((m: any) => m._id);
+
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ members: updatedMembersIds }),
+      });
+
+      if (!res.ok) throw new Error("Không thể xóa thành viên");
+
+      setProject({ 
+        ...project, 
+        members: project.members.filter((m: any) => m._id !== memberToDelete._id) 
+      });
+      toast.success(`Đã xóa ${memberToDelete.name} khỏi dự án`);
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setSaving(false);
+      setMemberToDelete(null);
+    }
   };
 
-  const handleDeleteProject = () => {
-    toast.success("Đã xóa dự án");
-    setDeleteProjectOpen(false);
-    router.push('/control/projects');
+  const handleDeleteProject = async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error("Xóa dự án thất bại");
+      
+      toast.success("Đã xóa dự án vĩnh viễn");
+      setDeleteProjectOpen(false);
+      router.push('/control/projects');
+    } catch (error: any) {
+      toast.error(error.message);
+    }
   };
 
-  const handleAddMember = (user: any) => {
-    if (project.members.find((m: any) => m._id === user._id)) return toast.warning("Đã có trong dự án");
-    const newMember = { _id: user._id, name: `${user.lastname} ${user.firstname}`, avatar: user.avatar, email: user.email };
-    setProject({ ...project, members: [...project.members, newMember] });
-    toast.success("Đã thêm thành viên");
+  const handleAddMember = async (user: any) => {
+    if (project.members.find((m: any) => m._id === user._id)) {
+      return toast.warning("Nhân sự này đã có trong dự án");
+    }
+
+    setSaving(true);
+    try {
+      const updatedMembersIds = [...project.members.map((m: any) => m._id), user._id];
+
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ members: updatedMembersIds }),
+      });
+
+      if (!res.ok) throw new Error("Không thể thêm thành viên");
+
+      const newMember = { 
+        ...user, 
+        name: `${user.lastname} ${user.firstname}`.trim() || user.email 
+      };
+      
+      setProject({ 
+        ...project, 
+        members: [...project.members, newMember] 
+      });
+      
+      toast.success(`Đã thêm ${newMember.name} vào dự án`);
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const availableUsers = MOCK_SYSTEM_USERS.filter(u => !project?.members?.some((m: any) => m._id === u._id));
+  const availableUsers = searchResults.filter(u => !project?.members?.some((m: any) => m._id === u._id));
 
   return (
     <div className="flex flex-col h-[calc(100vh-48px)] w-full bg-zinc-50 dark:bg-[#0a0a0a] text-zinc-900 dark:text-white relative overflow-hidden">
@@ -121,10 +238,10 @@ export function ProjectSettingsView({ projectId }: { projectId: string }) {
       <div className="flex-none flex items-center h-16 px-6 border-b border-zinc-200/60 dark:border-white/5 bg-white/70 dark:bg-[#0a0a0a]/70 backdrop-blur-xl z-20 justify-between">
         <div className="flex items-center gap-6">
           <Button 
-            variant="ghost" 
-            size="sm" 
+            variant="secondary" 
+            size="icon" 
             onClick={() => router.back()} 
-            className="h-10 w-10 p-0 rounded-2xl bg-cyan-100/50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500 hover:text-white border border-cyan-200/50 dark:border-cyan-500/20 shadow-none transition-all hover:scale-110 active:scale-95 group"
+            className="h-10 w-10 rounded-full bg-cyan-50 dark:bg-cyan-500/10 text-cyan-500 hover:bg-cyan-500 hover:text-white border border-cyan-100 dark:border-cyan-500/20 shadow-sm transition-all hover:scale-110 active:scale-95 group"
           >
             <ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5" /> 
           </Button>
@@ -148,10 +265,10 @@ export function ProjectSettingsView({ projectId }: { projectId: string }) {
             <button 
               onClick={() => setActiveTab('general')} 
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-semibold transition-all duration-300 border-2", 
+                "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-300 border-2", 
                 activeTab === 'general' 
-                  ? "bg-cyan-50/50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-100/50 dark:border-cyan-500/20 shadow-sm font-bold" 
-                  : "text-zinc-500 dark:text-zinc-400 border-transparent hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-200"
+                  ? "bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-100 dark:border-cyan-500/20 shadow-sm" 
+                  : "text-zinc-500 dark:text-zinc-400 border-transparent hover:bg-zinc-50 dark:hover:bg-white/5"
               )}
             >
               <Settings2 className={cn("h-4 w-4", activeTab === 'general' ? "text-cyan-600" : "")} /> Chung
@@ -159,10 +276,10 @@ export function ProjectSettingsView({ projectId }: { projectId: string }) {
             <button 
               onClick={() => setActiveTab('members')} 
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-semibold transition-all duration-300 border-2", 
+                "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-300 border-2", 
                 activeTab === 'members' 
-                  ? "bg-cyan-50/50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-100/50 dark:border-cyan-500/20 shadow-sm font-bold" 
-                  : "text-zinc-500 dark:text-zinc-400 border-transparent hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-200"
+                  ? "bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-100 dark:border-cyan-500/20 shadow-sm" 
+                  : "text-zinc-500 dark:text-zinc-400 border-transparent hover:bg-zinc-50 dark:hover:bg-white/5"
               )}
             >
               <Users className={cn("h-4 w-4", activeTab === 'members' ? "text-cyan-600" : "")} /> Thành viên
@@ -264,12 +381,11 @@ export function ProjectSettingsView({ projectId }: { projectId: string }) {
                         />
                       </div>
 
-                      {/* ACTION BUTTONS: Moved here */}
                       <div className="pt-6 flex items-center justify-between border-t border-zinc-100 dark:border-white/5">
                         <Button 
                           onClick={() => setDeleteProjectOpen(true)} 
-                          variant="outline" 
-                          className="h-12 px-8 rounded-2xl border-2 border-red-100 dark:border-red-900/20 text-red-500 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 font-bold text-[11px] uppercase tracking-normal transition-all shadow-sm"
+                          variant="ghost" 
+                          className="h-11 px-6 rounded-2xl text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 font-bold text-[10px] uppercase tracking-wider transition-all"
                         >
                           <Trash2 className="h-4 w-4 mr-2" /> Xóa dự án
                         </Button>
@@ -277,7 +393,7 @@ export function ProjectSettingsView({ projectId }: { projectId: string }) {
                         <Button 
                           onClick={handleSave} 
                           disabled={saving} 
-                          className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white h-12 px-8 rounded-2xl shadow-[0_4px_20px_0_rgba(6,182,212,0.3)] transition-all hover:scale-[1.02] active:scale-95 gap-2 text-[11px] font-bold uppercase tracking-normal border-0"
+                          className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 text-white h-11 px-8 rounded-2xl shadow-lg shadow-cyan-500/25 transition-all hover:scale-[1.02] active:scale-95 gap-2 text-[10px] font-bold uppercase tracking-wider border-0"
                         >
                           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Cập nhật thông tin
                         </Button>
@@ -303,7 +419,7 @@ export function ProjectSettingsView({ projectId }: { projectId: string }) {
                     </div>
                     <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
                       <DialogTrigger asChild>
-                        <Button size="sm" className="bg-zinc-900 dark:bg-cyan-500 text-white dark:text-black hover:scale-105 transition-all px-6 font-bold rounded-xl h-10 text-[10px] uppercase tracking-wider gap-2 shadow-lg border-0">
+                        <Button className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 text-white shadow-lg shadow-cyan-500/25 transition-all px-6 font-bold rounded-2xl h-11 text-[10px] uppercase tracking-wider gap-2 border-0">
                           <UserPlus className="h-4 w-4" /> THÊM NHÂN SỰ
                         </Button>
                       </DialogTrigger>
@@ -315,10 +431,17 @@ export function ProjectSettingsView({ projectId }: { projectId: string }) {
                             {availableUsers.length > 0 ? availableUsers.map((user) => (
                               <div key={user._id} className="flex items-center justify-between p-2 rounded bg-zinc-50 dark:bg-[#1a1a1d] border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                                 <div className="flex items-center gap-2">
-                                  <Avatar className="h-8 w-8 border border-zinc-200 dark:border-zinc-700"><AvatarFallback className="bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 text-[10px] font-bold">{user.lastname[0]}</AvatarFallback></Avatar>
+                                  <Avatar className="h-8 w-8 border border-zinc-200 dark:border-zinc-700"><AvatarFallback className="bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 text-xs font-bold">{user.lastname?.charAt(0).toUpperCase() || "?"}</AvatarFallback></Avatar>
                                   <div className="flex flex-col"><span className="text-xs font-bold text-zinc-900 dark:text-zinc-200">{user.lastname} {user.firstname}</span><span className="text-[10px] text-zinc-500">{user.email}</span></div>
                                 </div>
-                                <Button size="sm" className="h-7 bg-white dark:bg-[#27272a] hover:bg-cyan-600 hover:text-white text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 transition-all shadow-sm text-[10px]" onClick={() => handleAddMember(user)}>Thêm</Button>
+                                <Button 
+                                  size="sm" 
+                                  disabled={saving}
+                                  className="h-8 px-4 bg-white dark:bg-[#27272a] hover:bg-cyan-500 hover:text-white text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 rounded-xl transition-all shadow-sm text-[9px] font-bold uppercase tracking-wider" 
+                                  onClick={() => handleAddMember(user)}
+                                >
+                                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Thêm"}
+                                </Button>
                               </div>
                             )) : <div className="text-center py-4 text-zinc-500 text-xs">Không tìm thấy.</div>}
                           </div>
@@ -344,8 +467,8 @@ export function ProjectSettingsView({ projectId }: { projectId: string }) {
                             <div className="flex items-center gap-4">
                               <Avatar className="h-10 w-10 border-2 border-white dark:border-zinc-800 shadow-sm transition-transform group-hover:scale-105">
                                 <AvatarImage src={member.avatar} />
-                                <AvatarFallback className="bg-cyan-100 dark:bg-cyan-900/30 text-[11px] font-bold text-cyan-600 dark:text-cyan-400 uppercase">
-                                  {member.name ? member.name.substring(0, 2).toUpperCase() : "??"}
+                                <AvatarFallback className="bg-cyan-100 dark:bg-cyan-900/30 text-[13px] font-bold text-cyan-600 dark:text-cyan-400 uppercase">
+                                  {member.name ? member.name.charAt(0).toUpperCase() : "?"}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex flex-col">
@@ -355,11 +478,15 @@ export function ProjectSettingsView({ projectId }: { projectId: string }) {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <Badge variant="secondary" className="bg-zinc-100 dark:bg-white/5 text-zinc-500 dark:text-zinc-400 border-0 text-[9px] font-bold tracking-wider h-6 px-3 rounded-lg">MEMBER</Badge>
+                            {member._id === project?.manager?._id ? (
+                              <Badge className="bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-0 text-[10px] font-black tracking-widest h-6 px-3 rounded-lg shadow-none">LEADER</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="bg-zinc-100 dark:bg-white/5 text-zinc-500 dark:text-zinc-400 border-0 text-[9px] font-bold tracking-wider h-6 px-3 rounded-lg">MEMBER</Badge>
+                            )}
                           </td>
-                          <td className="px-6 py-4 text-right">
-                            <Button variant="ghost" size="icon" className="h-9 w-9 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-0 translate-x-4" onClick={() => setMemberToDelete(member)}>
-                              <Trash2 className="h-4.5 w-4.5" />
+                           <td className="px-6 py-4 text-right">
+                            <Button variant="ghost" size="icon" className="h-9 w-9 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-2xl transition-all duration-300" onClick={() => setMemberToDelete(member)}>
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </td>
                         </tr>
@@ -386,8 +513,8 @@ export function ProjectSettingsView({ projectId }: { projectId: string }) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4 gap-2">
-            <AlertDialogCancel className="h-10 text-[10px] font-bold uppercase tracking-wider bg-zinc-100 dark:bg-white/5 border-0 hover:bg-zinc-200 dark:hover:bg-white/10 rounded-xl transition-all">Hủy bỏ</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteMember} className="h-10 text-[10px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-700 text-white border-0 rounded-xl shadow-lg transition-all">Đồng ý xóa</AlertDialogAction>
+            <AlertDialogCancel className="h-11 text-[10px] font-bold uppercase tracking-wider bg-zinc-100 dark:bg-white/5 border-0 hover:bg-zinc-200 dark:hover:bg-white/10 rounded-2xl transition-all">Hủy bỏ</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteMember} className="h-11 text-[10px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-700 text-white border-0 rounded-2xl shadow-lg shadow-red-500/20 transition-all">Đồng ý xóa</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
