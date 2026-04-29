@@ -1,5 +1,6 @@
 import WorkItem from '@/models/work-item.model';
 import Project from '@/models/project.model';
+import User from '@/models/user.model';
 import { connectToDatabase } from '@/lib/mongo';
 
 // Helper: Chuẩn hóa Status từ Frontend (todo -> Todo, in_progress -> In Progress)
@@ -25,7 +26,9 @@ const toFrontendStatus = (status: string) => {
 export const getWorkItems = async (projectId: string) => {
     await connectToDatabase();
     const tasks = await WorkItem.find({ project: projectId })
-        .populate('assignee', 'firstname lastname email')
+        .populate('assignee', 'firstname lastname email avatar')
+        .populate('creator', 'firstname lastname email avatar')
+        .populate('activities.user', 'firstname lastname email avatar')
         .sort({ createdAt: -1 });
 
     return tasks.map(t => ({
@@ -59,6 +62,25 @@ export const createWorkItem = async (projectId: string, body: any) => {
     const dbPriority = body.priority ?
         (body.priority.charAt(0).toUpperCase() + body.priority.slice(1).toLowerCase()) : 'Medium';
 
+    const initialActivities: any[] = [];
+    if (body.creator) {
+        initialActivities.push({
+            type: 'create',
+            user: body.creator,
+            content: 'đã tạo công việc này'
+        });
+    }
+
+    if (body.assignee && body.creator) {
+        const assignedUser = await User.findById(body.assignee);
+        const assignedName = assignedUser ? `${assignedUser.lastname} ${assignedUser.firstname}`.trim() : 'Nhân viên';
+        initialActivities.push({
+            type: 'assign',
+            user: body.creator,
+            content: `đã giao công việc cho <b>${assignedName}</b>`
+        });
+    }
+
     const newTask = await WorkItem.create({
         title: body.title,
         description: body.description || '',
@@ -70,14 +92,18 @@ export const createWorkItem = async (projectId: string, body: any) => {
         dueDate: body.dueDate,
         estimate: body.estimate,
         parentId: body.parentId || null,
-        assignee: body.assignee || null
+        assignee: body.assignee || null,
+        creator: body.creator || null,
+        activities: initialActivities
     });
 
     await Project.findByIdAndUpdate(projectId, { taskCount: newCount });
 
-    // Populate assignee before returning
+    // Populate assignee and creator before returning
     const populatedTask = await WorkItem.findById(newTask._id)
-        .populate('assignee', 'firstname lastname email avatar');
+        .populate('assignee', 'firstname lastname email avatar')
+        .populate('creator', 'firstname lastname email avatar')
+        .populate('activities.user', 'firstname lastname email avatar');
 
     if (!populatedTask) return newTask.toObject();
 
@@ -87,7 +113,7 @@ export const createWorkItem = async (projectId: string, body: any) => {
     };
 };
 
-export const updateWorkItem = async (projectId: string, body: any) => {
+export const updateWorkItem = async (projectId: string, body: any, userId?: string) => {
     await connectToDatabase();
     const { workItemId, ...fields } = body;
 
@@ -115,6 +141,26 @@ export const updateWorkItem = async (projectId: string, body: any) => {
         throw new Error('Task not found');
     }
 
+    // Time Tracking Logic
+    if (updateData.status && updateData.status !== existingTask.status) {
+        const newStatus = updateData.status;
+
+        if (newStatus === 'In Progress') {
+            // Chỉ ghi nhận lần đầu tiên hoặc nếu chưa có
+            if (!existingTask.actualStartDate) {
+                updateData.actualStartDate = new Date();
+            }
+        }
+
+        if (newStatus === 'Done') {
+            updateData.actualEndDate = new Date();
+            const start = existingTask.actualStartDate || new Date();
+            const end = updateData.actualEndDate;
+            const diffMs = end.getTime() - start.getTime();
+            updateData.timeLogged = Math.max(0, Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100);
+        }
+    }
+
     const startDate = updateData.startDate ? new Date(updateData.startDate) : existingTask.startDate;
     const dueDate = updateData.dueDate ? new Date(updateData.dueDate) : existingTask.dueDate;
 
@@ -122,11 +168,62 @@ export const updateWorkItem = async (projectId: string, body: any) => {
         throw new Error('Ngày kết thúc không được trước ngày bắt đầu');
     }
 
+    const activities: any[] = [];
+
+    // Track status change
+    if (updateData.status && updateData.status !== existingTask.status && userId) {
+        activities.push({
+            type: 'state',
+            user: userId,
+            content: `đã đổi trạng thái thành <b>${updateData.status}</b>`
+        });
+    }
+
+    // Track assignee change
+    if ('assignee' in updateData && userId) {
+        const oldAssigneeStr = existingTask.assignee?.toString() || null;
+        const newAssigneeStr = updateData.assignee?.toString() || null;
+        if (oldAssigneeStr !== newAssigneeStr) {
+            if (updateData.assignee) {
+                const assignedUser = await User.findById(updateData.assignee);
+                const assignedName = assignedUser ? `${assignedUser.lastname} ${assignedUser.firstname}`.trim() : 'Nhân viên';
+                activities.push({
+                    type: 'assign',
+                    user: userId,
+                    content: `đã giao công việc cho <b>${assignedName}</b>`
+                });
+            } else {
+                activities.push({
+                    type: 'assign',
+                    user: userId,
+                    content: `đã gỡ bỏ người phụ trách`
+                });
+            }
+        }
+    }
+
+    // Track comment
+    if (fields.comment && userId) {
+        activities.push({
+            type: 'comment',
+            user: userId,
+            content: fields.comment
+        });
+    }
+
+    const finalUpdate: any = { $set: updateData };
+    if (activities.length > 0) {
+        finalUpdate.$push = { activities: { $each: activities } };
+    }
+
     const updatedTask = await WorkItem.findOneAndUpdate(
         { _id: workItemId, project: projectId },
-        { $set: updateData },
+        finalUpdate,
         { new: true }
-    ).populate('assignee', 'firstname lastname email avatar');
+    )
+        .populate('assignee', 'firstname lastname email avatar')
+        .populate('creator', 'firstname lastname email avatar')
+        .populate('activities.user', 'firstname lastname email avatar');
 
     if (!updatedTask) {
         throw new Error('Task not found');

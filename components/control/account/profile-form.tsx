@@ -90,8 +90,8 @@ export function ProfileForm() {
 
   // Hàm lấy chữ cái đầu của tên
   const getInitials = () => {
-    if (user?.firstname) {
-      return user.firstname.charAt(0).toUpperCase();
+    if (user?.lastname) {
+      return user.lastname.charAt(0).toUpperCase();
     }
     if (user?.fullName) {
       return user.fullName.charAt(0).toUpperCase();
@@ -116,29 +116,29 @@ export function ProfileForm() {
 
   // --- STYLE CLASSES ---
   const inputClass = cn(
-    "h-12 pl-12 transition-all",
-    "bg-white/60 dark:bg-[#1a1a1d]/60 border-zinc-200/60 dark:border-white/5 text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 rounded-2xl text-sm font-medium",
+    "h-10 pl-10 transition-all",
+    "bg-background border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary rounded-md text-sm",
   );
 
-  const iconClass = "absolute left-4 top-3.5 h-5 w-5 text-cyan-500/50";
-  const labelClass = "text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2 block ml-1";
+  const iconClass = "absolute left-3 top-2.5 h-4 w-4 text-muted-foreground";
+  const labelClass = "text-xs font-semibold text-foreground mb-1.5 block ml-0.5";
 
   return (
-    <Card className="h-full flex flex-col border border-white/60 dark:border-white/5 shadow-2xl bg-white/40 dark:bg-white/[0.02] backdrop-blur-xl transition-all rounded-[2.5rem] overflow-hidden">
+    <div className="h-full flex flex-col">
       
       {/* IDENTITY SECTION */}
-      <div className="p-8 pb-0 flex flex-col items-center md:items-start md:flex-row gap-8">
+      <div className="flex flex-col md:flex-row gap-8 items-start mb-10">
         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
         
         <div className="relative group/avatar shrink-0">
           <div 
-            className="h-28 w-28 rounded-3xl overflow-hidden shadow-2xl border-[6px] border-white dark:border-[#121214] ring-1 ring-black/5 cursor-pointer hover:scale-105 transition-transform"
+            className="h-24 w-24 rounded-2xl overflow-hidden border border-border cursor-pointer hover:opacity-90 transition-opacity"
             onClick={() => fileInputRef.current?.click()}
           >
             {avatarUrl ? (
               <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
             ) : (
-              <div className="h-full w-full bg-cyan-100 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center text-3xl font-black uppercase">
+              <div className="h-full w-full bg-primary/10 text-primary flex items-center justify-center text-3xl font-bold uppercase">
                 {getInitials()}
               </div>
             )}
@@ -146,37 +146,49 @@ export function ProfileForm() {
                <Camera className="h-6 w-6 text-white" />
             </div>
           </div>
-          <div className="absolute -bottom-2 -right-2 p-2 bg-cyan-500 text-white rounded-xl border-4 border-white dark:border-[#121214] shadow-lg cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-            <Camera className="h-3.5 w-3.5" />
+          <div className="absolute -bottom-1 -right-1 p-1.5 bg-primary text-primary-foreground rounded-lg border-2 border-background shadow-sm cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+            <Camera className="h-3 w-3" />
           </div>
         </div>
 
-        <div className="flex-1 text-center md:text-left pt-2">
-          <div className="flex flex-col md:flex-row md:items-center gap-3 mb-2">
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">
-              {user?.fullName || "Người dùng ZenWork"}
-            </h1>
-            <div className="px-2.5 py-1 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 rounded-lg text-[9px] font-bold uppercase tracking-wider border border-cyan-500/20 w-fit mx-auto md:mx-0">
-               Verified Account
+        <div className="flex-1 pt-2">
+          <h1 className="text-3xl font-bold text-foreground tracking-tight mb-3">
+            {user?.fullName || "Người dùng ZenWork"}
+          </h1>
+
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+            <div className="flex flex-col">
+               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight leading-none mb-1">Vai trò</span>
+               <span className="text-sm font-bold text-foreground leading-none capitalize">
+                 {user?.roles && user.roles.length > 0 ? user.roles.join(', ') : 'Thành viên'}
+               </span>
+            </div>
+
+            <div className="w-[1px] h-8 bg-border hidden md:block" />
+
+            <div className="flex flex-col">
+               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight leading-none mb-1">Ngày gia nhập</span>
+               <span className="text-sm font-bold text-foreground leading-none">
+                 {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : '24/12/2025'}
+               </span>
             </div>
           </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Hồ sơ cá nhân và nhận diện hệ thống của bạn.</p>
         </div>
       </div>
 
       {/* BODY CONTENT */}
-      <CardContent className="p-8 flex-1 flex flex-col gap-10">
+      <div className="flex flex-col gap-6">
         
         {/* SECTION 1: PERSONAL INFO */}
-        <div className="space-y-6">
-          <div className="flex items-center gap-2 mb-6 ml-1">
-            <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-600">
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="p-1.5 rounded-md bg-primary/10 text-primary">
                <User className="h-4 w-4" />
             </div>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Thông tin cơ bản</h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-foreground">Thông tin cơ bản</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="space-y-2">
               <Label className={labelClass}>Họ</Label>
               <div className="relative"><User className={iconClass} /><Input value={form.lastname} onChange={e => setForm({...form, lastname: e.target.value})} className={inputClass} placeholder="Nguyễn" /></div>
@@ -199,68 +211,50 @@ export function ProfileForm() {
           </div>
         </div>
 
-        <div className="h-[1px] w-full bg-zinc-100 dark:bg-white/5" />
+
 
         {/* SECTION 2: SECURITY */}
-        <div className="space-y-6">
-          <div className="flex items-center gap-2 mb-6 ml-1">
-            <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-600">
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="p-1.5 rounded-md bg-primary/10 text-primary">
                <KeyRound className="h-4 w-4" />
             </div>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Bảo mật tài khoản</h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-foreground">Bảo mật tài khoản</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label className={labelClass}>Mật khẩu hiện tại</Label>
-              <div className="relative">
-                <Input type={showPass.current ? "text" : "password"} value={passData.current} onChange={e => setPassData({...passData, current: e.target.value})} className={inputClass} placeholder="••••••••" />
-                <button onClick={() => setShowPass({...showPass, current: !showPass.current})} className="absolute right-4 top-3.5 text-zinc-400 hover:text-cyan-500" type="button">
-                  {showPass.current ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className={labelClass}>Mật khẩu hiện tại</Label>
+                <div className="relative">
+                  <Input type={showPass.current ? "text" : "password"} value={passData.current} onChange={e => setPassData({...passData, current: e.target.value})} className={inputClass} placeholder="••••••••" />
+                  <button onClick={() => setShowPass({...showPass, current: !showPass.current})} className="absolute right-3 top-2.5 text-muted-foreground hover:text-primary" type="button">
+                    {showPass.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label className={labelClass}>Mật khẩu mới</Label>
-              <div className="relative">
-                <Input type={showPass.new ? "text" : "password"} value={passData.new} onChange={e => setPassData({...passData, new: e.target.value})} className={inputClass} placeholder="••••••••" />
-                <button onClick={() => setShowPass({...showPass, new: !showPass.new})} className="absolute right-4 top-3.5 text-zinc-400 hover:text-cyan-500" type="button">
-                  {showPass.new ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
+              <div className="space-y-2">
+                <Label className={labelClass}>Mật khẩu mới</Label>
+                <div className="relative">
+                  <Input type={showPass.new ? "text" : "password"} value={passData.new} onChange={e => setPassData({...passData, new: e.target.value})} className={inputClass} placeholder="••••••••" />
+                  <button onClick={() => setShowPass({...showPass, new: !showPass.new})} className="absolute right-3 top-2.5 text-muted-foreground hover:text-primary" type="button">
+                    {showPass.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
         {/* Nút THỐNG NHẤT */}
-        <div className="flex justify-center pt-4">
+        <div className="flex justify-end pt-4">
           <Button 
             onClick={handleSave} 
             disabled={loading} 
-            className="w-full md:w-auto bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-[0_10px_25px_-5px_rgba(6,182,212,0.4)] h-12 px-20 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all hover:scale-[1.02] active:scale-95 border-0"
+            className="w-full md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground h-11 px-10 rounded-lg font-bold text-sm transition-all shadow-sm"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4 mr-2" /> Lưu hồ sơ cá nhân</>}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4 mr-2" /> Cập nhật hồ sơ</>}
           </Button>
         </div>
-
-        {/* FOOTER: System Info */}
-        <div className="mt-4 pt-10 border-t border-zinc-100/50 dark:border-white/5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-zinc-50/50 dark:bg-white/5 border border-zinc-100 dark:border-white/5">
-               <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Briefcase className="h-3 w-3" /> Phòng ban</span>
-               <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">IT Department</span>
-            </div>
-            <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-zinc-50/50 dark:bg-white/5 border border-zinc-100 dark:border-white/5">
-                <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Calendar className="h-3 w-3" /> Ngày tham gia</span>
-                <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">24/12/2025</span>
-            </div>
-            <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-zinc-50/50 dark:bg-white/5 border border-zinc-100 dark:border-white/5">
-                <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Clock className="h-3 w-3" /> Hoạt động cuối</span>
-                <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Hôm nay, 09:30 AM</span>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

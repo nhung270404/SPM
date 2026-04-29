@@ -59,6 +59,7 @@ export function UserManagementView() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const router = useRouter();
 
@@ -70,7 +71,7 @@ export function UserManagementView() {
         // Ánh xạ dữ liệu từ MongoDB sang Format của UI
         const mappedData = data.map((u: any) => ({
           id: u._id,
-          name: `${u.firstname} ${u.lastname}`,
+          name: `${u.lastname} ${u.firstname}`,
           email: u.email,
           role: u.roles && u.roles.length > 0 ? (u.roles[0].title || u.roles[0].name) : (u.position || 'Nhân viên'),
           department: u.department || 'Chưa xác định',
@@ -96,6 +97,16 @@ export function UserManagementView() {
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Reset page when search changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  const ITEMS_PER_PAGE = 10;
+  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const currentUsers = filteredUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const totalUsers = users.length;
   const activeUsers = users.filter(u => u.status === 'Active').length;
@@ -242,8 +253,8 @@ export function UserManagementView() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.length > 0 ? (
-                      filteredUsers.map((user) => (
+                    {currentUsers.length > 0 ? (
+                      currentUsers.map((user) => (
                         <TableRow key={user.id} className="group/row hover:bg-[#36caf1]/[0.02] dark:hover:bg-[#36caf1]/[0.05] border-slate-100 dark:border-slate-800 transition-all duration-300">
 
                           <TableCell className="px-8 py-4">
@@ -348,11 +359,47 @@ export function UserManagementView() {
           </div>
         </CardContent>
 
-        <div className="p-6 bg-slate-50/20 dark:bg-slate-900/10 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end">
+        <div className="p-6 bg-slate-50/20 dark:bg-slate-900/10 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="text-xs text-slate-500 font-medium">
+            Hiển thị {filteredUsers.length > 0 ? startIndex + 1 : 0} - {Math.min(startIndex + ITEMS_PER_PAGE, filteredUsers.length)} trong tổng số {filteredUsers.length} thành viên
+          </div>
           <div className="flex gap-1.5">
-             <Button variant="ghost" size="sm" className="h-8 text-[11px] font-bold rounded-lg text-slate-400" disabled>Trước</Button>
-             <Button variant="outline" size="sm" className="h-8 w-8 text-[11px] font-bold rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm transition-all" disabled>1</Button>
-             <Button variant="ghost" size="sm" className="h-8 text-[11px] font-bold rounded-lg text-slate-400" disabled>Sau</Button>
+             <Button 
+               variant="ghost" 
+               size="sm" 
+               className="h-8 text-[11px] font-bold rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white disabled:opacity-50" 
+               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+               disabled={currentPage === 1 || totalPages === 0}
+             >
+               Trước
+             </Button>
+             
+             {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+               <Button 
+                 key={page}
+                 variant={currentPage === page ? "default" : "outline"}
+                 size="sm" 
+                 className={cn(
+                   "h-8 w-8 text-[11px] font-bold rounded-lg shadow-sm transition-all",
+                   currentPage === page 
+                     ? "bg-[#36caf1] text-white hover:bg-[#03bdd8] border-none" 
+                     : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                 )}
+                 onClick={() => setCurrentPage(page)}
+               >
+                 {page}
+               </Button>
+             ))}
+
+             <Button 
+               variant="ghost" 
+               size="sm" 
+               className="h-8 text-[11px] font-bold rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white disabled:opacity-50" 
+               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+               disabled={currentPage === totalPages || totalPages === 0}
+             >
+               Sau
+             </Button>
           </div>
         </div>
       </Card>

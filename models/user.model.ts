@@ -9,6 +9,7 @@ export interface IUser extends Document {
   phone: string;
   address: string[];
   roles: mongoose.Types.ObjectId[];
+  fullName: string;
   avatar?: string;
   cover?: string;
   department?: string;
@@ -103,7 +104,11 @@ const UserSchema = new Schema<IUser>({
     type: Date,
     index: { expireAfterSeconds: 0 },
   },
-}, { timestamps: true });
+}, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
+
+UserSchema.virtual('fullName').get(function () {
+  return `${this.lastname} ${this.firstname}`.trim();
+});
 
 UserSchema.methods.setPassword = async function (password: string) {
   const salt = await bcrypt.genSalt(10);
@@ -122,9 +127,6 @@ UserSchema.pre('save', function () {
 });
 
 
-if (mongoose.models.User) {
-  delete mongoose.models.User;
-}
-const User: Model<IUser> = mongoose.model('User', UserSchema);
+const User = mongoose.models.User as Model<IUser> || mongoose.model<IUser>('User', UserSchema);
 
 export default User;

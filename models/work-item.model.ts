@@ -1,6 +1,14 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 // 1. Định nghĩa Interface cho TypeScript (giúp code gợi ý chuẩn)
+export interface IActivity {
+  _id?: mongoose.Types.ObjectId;
+  type: 'create' | 'assign' | 'state' | 'comment';
+  user: mongoose.Types.ObjectId | any;
+  content: string;
+  timestamp: Date;
+}
+
 export interface IWorkItem extends Document {
   title: string;
   description?: string;
@@ -8,14 +16,26 @@ export interface IWorkItem extends Document {
   priority: 'Low' | 'Medium' | 'High';
   project: mongoose.Types.ObjectId; // Link tới Project
   assignee?: mongoose.Types.ObjectId; // Link tới User
+  creator?: mongoose.Types.ObjectId; // Link tới User
   startDate?: Date;
   dueDate?: Date;
   estimate?: number;
+  actualStartDate?: Date;
+  actualEndDate?: Date;
+  timeLogged?: number; // In hours or minutes
   parentId?: mongoose.Types.ObjectId; // Link tới Task cha (nếu là subtask)
+  activities: IActivity[];
   createdAt: Date;
   updatedAt: Date;
   taskId: string;
 }
+
+const ActivitySchema = new Schema<IActivity>({
+  type: { type: String, enum: ['create', 'assign', 'state', 'comment'], required: true },
+  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  content: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now }
+});
 
 // 2. Định nghĩa Schema Mongoose (Cấu trúc lưu trong DB)
 const WorkItemSchema: Schema<IWorkItem> = new Schema(
@@ -51,6 +71,10 @@ const WorkItemSchema: Schema<IWorkItem> = new Schema(
       type: Schema.Types.ObjectId,
       ref: 'User', // Quan trọng: Phải khớp tên model User
     },
+    creator: {
+      type: Schema.Types.ObjectId,
+      ref: 'User', 
+    },
     startDate: {
       type: Date,
     },
@@ -60,11 +84,21 @@ const WorkItemSchema: Schema<IWorkItem> = new Schema(
     estimate: {
       type: Number,
     },
+    actualStartDate: {
+      type: Date,
+    },
+    actualEndDate: {
+      type: Date,
+    },
+    timeLogged: {
+      type: Number,
+    },
     parentId: {
       type: Schema.Types.ObjectId,
       ref: 'WorkItem',
       index: true,
     },
+    activities: [ActivitySchema],
   },
   {
     timestamps: true, // Tự động tạo createdAt và updatedAt

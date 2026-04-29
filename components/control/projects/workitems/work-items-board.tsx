@@ -98,9 +98,9 @@ export function WorkItemsBoard({
                                         {...provided.droppableProps}
                                         ref={provided.innerRef}
                                         className={cn(
-                                            "flex-1 rounded-[1.5rem] backdrop-blur-xl border border-zinc-200/50 dark:border-white/5 p-3 overflow-y-auto no-scrollbar transition-all duration-300 relative",
+                                            "flex-1 rounded-[1.5rem] border border-zinc-200/50 dark:border-white/5 p-3 overflow-y-auto no-scrollbar transition-colors duration-300 relative",
                                             STATUS_BG_COLORS[col.id] || "bg-slate-50/50",
-                                            snapshot.isDraggingOver ? "ring-2 ring-cyan-500/20 shadow-inner brightness-95" : ""
+                                            snapshot.isDraggingOver ? "ring-2 ring-cyan-500/20 shadow-inner" : ""
                                         )}>
                                         <div className="flex flex-col gap-3 min-h-full pb-10">
                                             {getTasksByStatus(col.id).length > 0 ? (
@@ -112,11 +112,13 @@ export function WorkItemsBoard({
                                                             {...provided.draggableProps}
                                                             {...provided.dragHandleProps}
                                                             onClick={() => onSelectTask(task)}
+                                                            style={provided.draggableProps.style}
                                                             className={cn(
-                                                                "group relative flex flex-col gap-3 p-4.5 rounded-[1.5rem] border transition-all duration-500 cursor-pointer",
-                                                                "bg-white/80 dark:bg-[#1a1a1d]/80 backdrop-blur-xl border-zinc-200/50 dark:border-white/5",
-                                                                "hover:border-cyan-500/20 dark:hover:border-white/10 hover:shadow-[0_15px_40px_rgba(0,0,0,0.04)] dark:hover:shadow-[0_15px_40px_rgba(0,0,0,0.2)] hover:scale-[1.01]",
-                                                                snapshot.isDragging ? "shadow-2xl ring-2 ring-cyan-500/30 scale-[1.03] z-50 rotate-1 opacity-100" : ""
+                                                                "group relative flex flex-col gap-3 p-4.5 rounded-[1.5rem] border cursor-pointer",
+                                                                "bg-white/80 dark:bg-[#1a1a1d]/80 border-zinc-200/50 dark:border-white/5",
+                                                                "hover:border-cyan-500/20 dark:hover:border-white/10 hover:shadow-[0_15px_40px_rgba(0,0,0,0.04)] dark:hover:shadow-[0_15px_40px_rgba(0,0,0,0.2)]",
+                                                                !snapshot.isDragging && "hover:scale-[1.01] transition-[border-color,box-shadow,background-color,transform] duration-300",
+                                                                snapshot.isDragging ? "shadow-2xl ring-2 ring-cyan-500/30 z-50 opacity-100 cursor-grabbing bg-white dark:bg-[#1a1a1d]" : ""
                                                             )}>
                                                             
                                                             {/* Card Header: ID & Parent */}

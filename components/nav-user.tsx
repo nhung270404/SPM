@@ -48,13 +48,13 @@ export function NavUser({ user }: { user: IUser }) {
                     "hover:bg-white/10 text-sidebar-foreground",
                     isCollapsed ? "justify-center p-0" : "px-3"
                   )}
-                  tooltip={`${user.firstname} ${user.lastname}`}
+                  tooltip={`${user.lastname} ${user.firstname}`}
                 >
                   <div className="relative flex-shrink-0">
                     <Avatar className="h-9 w-9 rounded-lg border-2 border-primary/20 shadow-sm">
-                      <AvatarImage src={user.avatar} alt={`${user.firstname} ${user.lastname}`} />
+                      <AvatarImage src={user.avatar} alt={`${user.lastname} ${user.firstname}`} />
                       <AvatarFallback className="rounded-lg bg-cyan-100 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-bold text-xs uppercase">
-                        {user.firstname?.charAt(0).toUpperCase() || "?"}
+                        {user.lastname?.charAt(0).toUpperCase() || "?"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-sidebar bg-green-500" />
@@ -64,7 +64,7 @@ export function NavUser({ user }: { user: IUser }) {
                     <>
                       <div className="grid flex-1 text-left text-sm leading-tight ml-3 animate-in fade-in duration-300">
                         <span className="truncate font-bold text-sidebar-foreground">
-                          {user.firstname} {user.lastname}
+                          {user.lastname} {user.firstname}
                         </span>
                       </div>
                       <ChevronsUpDown className="ml-auto size-4 text-sidebar-foreground/50" />
@@ -82,13 +82,13 @@ export function NavUser({ user }: { user: IUser }) {
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-3 px-3 py-3 bg-cyan-50/50 rounded-lg mb-1">
                     <Avatar className="h-10 w-10 rounded-lg border-2 border-primary/20">
-                      <AvatarImage src={user.avatar} alt={`${user.firstname} ${user.lastname}`} />
+                      <AvatarImage src={user.avatar} alt={`${user.lastname} ${user.firstname}`} />
                       <AvatarFallback className="rounded-lg bg-cyan-100 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-bold uppercase">
-                        {user.firstname?.charAt(0).toUpperCase() || "?"}
+                        {user.lastname?.charAt(0).toUpperCase() || "?"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-bold text-sidebar-foreground">{user.firstname} {user.lastname}</span>
+                      <span className="truncate font-bold text-sidebar-foreground">{user.lastname} {user.firstname}</span>
                     </div>
                   </div>
                 </DropdownMenuLabel>

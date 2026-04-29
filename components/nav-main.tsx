@@ -47,8 +47,8 @@ export function NavMain({
                   "relative h-11 transition-all duration-300 group/item",
                   isCollapsed ? "justify-center p-0" : "px-3",
                   item.isActive 
-                    ? (isCollapsed ? "bg-white dark:bg-slate-800 text-primary shadow-sm rounded-lg" : "sidebar-active-protrude text-primary font-bold hover:text-primary") 
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-xl"
+                    ? "text-primary font-bold" 
+                    : "text-sidebar-foreground/80 hover:text-primary transition-colors"
                 )}
               >
                 <Link href={item.url} className={cn("flex items-center", isCollapsed ? "justify-center" : "gap-3")}>

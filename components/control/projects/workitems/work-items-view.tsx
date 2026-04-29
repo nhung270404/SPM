@@ -40,7 +40,20 @@ export function WorkItemsView({ projectId: _projectId }: { projectId: string }) 
     assignee: t.assignee && typeof t.assignee === 'object' ? {
       ...t.assignee,
       name: `${t.assignee.lastname || ''} ${t.assignee.firstname || ''}`.trim() || t.assignee.email
-    } : t.assignee
+    } : t.assignee,
+    creator: t.creator && typeof t.creator === 'object' ? {
+      ...t.creator,
+      name: `${t.creator.lastname || ''} ${t.creator.firstname || ''}`.trim() || t.creator.email
+    } : t.creator,
+    activities: Array.isArray(t.activities) ? t.activities.map((a: any) => ({
+      ...a,
+      id: a._id || a.id || Math.random().toString(),
+      timestamp: new Date(a.timestamp),
+      user: a.user && typeof a.user === 'object' ? {
+        ...a.user,
+        name: `${a.user.lastname || ''} ${a.user.firstname || ''}`.trim() || a.user.email
+      } : a.user
+    })) : []
   });
 
   const fetchProject = async () => {
@@ -58,9 +71,10 @@ export function WorkItemsView({ projectId: _projectId }: { projectId: string }) 
       const res = await axios.get(`/api/projects/${_projectId}/workitems`);
       const mappedTasks = res.data.map((t: any) => normalizeTask(t));
       setTasks(mappedTasks);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error("Không tải được công việc");
+      const backendError = err.response?.data?.error || "Không tải được công việc";
+      toast.error(backendError, { id: 'fetch-tasks-error' });
     } finally {
       setIsLoading(false);
     }
@@ -83,17 +97,24 @@ export function WorkItemsView({ projectId: _projectId }: { projectId: string }) 
     // Kiểm tra quy định chuyển trạng thái
     const allowedNext = STATUS_TRANSITIONS[fromStatus] || [];
     if (!allowedNext.includes(toStatus)) {
-      return toast.error("Không thể kéo công việc sang trạng thái này");
+      return toast.error("Không thể kéo công việc sang trạng thái này", { id: 'drag-error' });
     }
 
     // Cập nhật giao diện nhanh (Optimistic Update)
     setTasks(prev => prev.map(t => t._id === draggableId ? { ...t, status: toStatus } : t));
 
     try {
-      await axios.patch(`/api/projects/${_projectId}/workitems`, {
+      const res = await axios.patch(`/api/projects/${_projectId}/workitems`, {
         workItemId: draggableId,
         status: toStatus
       });
+      if (res.data) {
+        const updated = normalizeTask(res.data);
+        setTasks(prev => prev.map(t => t._id === draggableId ? updated : t));
+        if (selectedTask?._id === draggableId) {
+          setSelectedTask(updated);
+        }
+      }
     } catch (err) {
       toast.error("Không lưu được trạng thái");
       fetchTasks(); // Tải lại dữ liệu nếu có lỗi
@@ -109,7 +130,7 @@ export function WorkItemsView({ projectId: _projectId }: { projectId: string }) 
       return toast.error("Ngày bắt đầu không được sau ngày kết thúc");
     }
     if (field === 'endDate' && currentTask.startDate && toDateOnly(value) < toDateOnly(new Date(currentTask.startDate))) {
-      return toast.error("Ngày kết thúc không được trước ngày bắt đầu");
+      return toast.error("Ngày kết thúc không được trước ngày bắt đầu", { id: 'date-error' });
     }
 
     // Cập nhật State cục bộ
@@ -136,7 +157,7 @@ export function WorkItemsView({ projectId: _projectId }: { projectId: string }) 
       }
     } catch (err) {
       console.error(err);
-      toast.error("Không lưu được thay đổi");
+      toast.error("Không lưu được thay đổi", { id: 'save-error' });
       fetchTasks();
     }
   };
@@ -238,21 +259,20 @@ export function WorkItemsView({ projectId: _projectId }: { projectId: string }) 
         />
 
         {selectedTask && (
-          <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedTask(null)}>
-            <div onClick={(e) => e.stopPropagation()}>
-              <WorkItemsDetailPanel 
-                task={selectedTask}
-                tasks={tasks}
-                members={project?.members?.map((m: any) => ({
-                  ...m,
-                  name: `${m.lastname} ${m.firstname}`.trim() || m.email
-                })) || []}
-                onClose={() => setSelectedTask(null)}
-                onUpdate={handleUpdateTask}
-                onCreateSubtask={() => openCreateDialog('Todo', selectedTask)}
-              />
-            </div>
-          </div>
+          <WorkItemsDetailPanel 
+            task={selectedTask}
+            tasks={tasks}
+            members={project?.members?.map((m: any) => ({
+              ...m,
+              name: `${m.lastname} ${m.firstname}`.trim() || m.email
+            })) || []}
+            onClose={() => setSelectedTask(null)}
+            onUpdate={handleUpdateTask}
+            onCreateSubtask={() => {
+              setParentTaskForSub(selectedTask);
+              setIsCreateOpen(true);
+            }}
+          />
         )}
       </div>
     </TooltipProvider>

@@ -55,6 +55,12 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
     },
     projectMenuStatic,
     {
+      title: 'Thống kê',
+      url: '/control/statistics',
+      icon: PieChart,
+      isActive: pathname.startsWith('/control/statistics'),
+    },
+    {
       title: 'Thông báo',
       url: '/control/notifications',
       icon: Bell,

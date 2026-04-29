@@ -13,8 +13,23 @@ export type Task = {
   startDate: Date | null;
   endDate: Date | null;
   estimate: any | null;
+  actualStartDate?: Date | null;
+  actualEndDate?: Date | null;
+  timeLogged?: number | null;
   parentId?: string | null;
   creator: any;
+  activities?: Activity[];
+};
+
+export type ActivityType = 'create' | 'assign' | 'state' | 'comment';
+
+export type Activity = {
+    id?: string;
+    _id?: string;
+    type: ActivityType;
+    user: any;
+    content: string;
+    timestamp: Date;
 };
 
 export const columns = {

@@ -17,6 +17,7 @@ export type FrontendUser = {
   avatar?: string;
   cover?: string;
   address: string;
+  createdAt?: string;
 };
 
 type UserContextType = {
@@ -39,11 +40,12 @@ function toFrontendUser(raw: any): FrontendUser {
     firstname: u.firstname,
     lastname: u.lastname,
 
-    fullName: `${u.firstname ?? ''} ${u.lastname ?? ''}`.trim(),
-    name: `${u.firstname ?? ''} ${u.lastname ?? ''}`.trim(),
+    fullName: `${u.lastname ?? ''} ${u.firstname ?? ''}`.trim(),
+    name: `${u.lastname ?? ''} ${u.firstname ?? ''}`.trim(),
     avatar: u.avatar || '',
     cover: u.cover || '',
     address: Array.isArray(u.address) ? u.address.join(', ') : '',
+    createdAt: u.createdAt,
   };
 }
 
