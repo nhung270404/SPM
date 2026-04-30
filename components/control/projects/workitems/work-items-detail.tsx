@@ -92,7 +92,41 @@ const RichTextEditor = ({ onSend }: { onSend: (html: string) => void }) => {
     const exec = (command: string, value: string | undefined = undefined) => { document.execCommand(command, false, value); editorRef.current?.focus(); updateFormats(); };
     const handleInput = () => { if (editorRef.current) setIsEmpty(editorRef.current.innerText.trim() === "" && editorRef.current.innerHTML === ""); updateFormats(); };
     const handleSend = () => { if (editorRef.current && !isEmpty) { onSend(editorRef.current.innerHTML); editorRef.current.innerHTML = ""; setIsEmpty(true); updateFormats(); } };
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) { editorRef.current?.focus(); document.execCommand('insertHTML', false, `<br/><span class="text-cyan-600 dark:text-cyan-400 font-bold underline cursor-pointer">[File: ${e.target.files[0].name}]</span>&nbsp;`); toast.success("Đã đính kèm file"); } };
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const toastId = toast.loading(`Đang tải lên: ${file.name}...`);
+        
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!res.ok) throw new Error('Upload failed');
+
+            const data = await res.json();
+            
+            editorRef.current?.focus(); 
+            // Chèn một liên kết tải về thực tế với giao diện đẹp
+            const linkHtml = `<br/><a href="${data.url}" target="_blank" download="${data.name}" class="inline-flex items-center gap-2 px-3 py-1.5 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-bold rounded-lg border border-cyan-200 dark:border-cyan-500/20 hover:bg-cyan-100 dark:hover:bg-cyan-500/20 transition-all no-underline shadow-sm my-1 cursor-pointer" contenteditable="false">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-paperclip"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.51a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                ${data.name}
+            </a>&nbsp;`;
+            
+            document.execCommand('insertHTML', false, linkHtml); 
+            toast.success("Tải lên thành công", { id: toastId });
+        } catch (error) {
+            console.error(error);
+            toast.error("Lỗi khi tải file lên", { id: toastId });
+        } finally {
+            if (e.target) e.target.value = ''; // Reset input
+        }
+    };
 
     return (
         <div className="rounded-2xl border border-zinc-200/60 dark:border-white/10 bg-white/50 dark:bg-black/20 overflow-hidden focus-within:ring-2 focus-within:ring-cyan-500/30 transition-all mt-4 shadow-sm">
@@ -124,7 +158,6 @@ export function WorkItemsDetailPanel({
 }) {
     const subtasks = tasks.filter(t => t.parentId === task._id);
     const [isSubtasksExpanded, setIsSubtasksExpanded] = useState(true);
-    const headerFileRef = useRef<HTMLInputElement>(null);
 
     const activities = task.activities || [];
 
@@ -132,8 +165,6 @@ export function WorkItemsDetailPanel({
         onUpdate(task._id, 'comment', html);
         toast.success("Đã gửi bình luận");
     };
-
-    const handleHeaderAttach = () => { headerFileRef.current?.click(); };
 
     const renderDetailProp = (label: string, icon: any, valueDisplay: React.ReactNode, content: React.ReactNode) => (
         <div className="grid grid-cols-[140px_1fr] items-center py-2.5 group border-b border-zinc-100/50 dark:border-white/[0.02] last:border-0">
@@ -194,10 +225,6 @@ export function WorkItemsDetailPanel({
                 <div className="flex gap-3 px-4">
                     <Button onClick={onCreateSubtask} variant="outline" className="h-9 text-[13px] font-bold rounded-xl bg-white dark:bg-white/5 border-zinc-200 dark:border-white/10 text-slate-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white hover:border-cyan-500/30 shadow-sm transition-all gap-2">
                         <GitMerge className="h-4 w-4 text-cyan-500" /> Tạo công việc con
-                    </Button>
-                    <input type="file" ref={headerFileRef} className="hidden" onChange={(e) => { if (e.target.files?.[0]) toast.success(`Đã đính kèm: ${e.target.files[0].name}`); }} />
-                    <Button onClick={handleHeaderAttach} variant="outline" className="h-9 text-[13px] font-bold rounded-xl bg-white dark:bg-white/5 border-zinc-200 dark:border-white/10 text-slate-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white hover:border-cyan-500/30 shadow-sm transition-all gap-2">
-                        <Paperclip className="h-4 w-4 text-zinc-400" /> Đính kèm
                     </Button>
                 </div>
 

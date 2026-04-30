@@ -60,9 +60,19 @@ export function NavMain({
                     )}
                   </div>
                   {!isCollapsed && (
-                    <span className="text-sm truncate">
-                      {t(item.title)}
-                    </span>
+                    <div className="flex-1 flex items-center justify-between min-w-0">
+                      <span className="text-sm truncate">
+                        {t(item.title)}
+                      </span>
+                      {item.badge !== undefined && (
+                        <span className="ml-auto flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-[#36caf1] px-1.5 text-[10px] font-bold text-white shadow-sm shadow-[#36caf1]/20">
+                          {item.badge}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {isCollapsed && item.badge !== undefined && (
+                    <div className="absolute top-2 right-2 size-2 bg-[#36caf1] rounded-full border-2 border-sidebar shadow-sm" />
                   )}
                 </Link>
               </SidebarMenuButton>

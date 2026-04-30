@@ -21,6 +21,7 @@ export interface NotificationData {
   message: string;
   timestamp: Date;
   isRead: boolean;
+  link?: string;
 }
 
 interface NotificationItemProps {
@@ -55,9 +56,13 @@ export function NotificationItem({ notification, onRead }: NotificationItemProps
   const config = typeConfig[notification.type];
   const Icon = config.icon;
 
+  // Xử lý ngày tháng để tránh lỗi "Invalid time value"
+  const rawDate = notification.timestamp || (notification as any).createdAt;
+  const dateObj = rawDate ? new Date(rawDate) : new Date();
+
   return (
     <div 
-      onClick={() => onRead(notification.id)}
+      onClick={() => onRead(notification.id || (notification as any)._id)}
       className={cn(
         "group relative flex items-start gap-4 p-5 transition-all cursor-pointer border-b border-slate-50 dark:border-slate-900 last:border-0",
         "hover:bg-slate-50 dark:hover:bg-slate-900/50",
@@ -85,7 +90,7 @@ export function NotificationItem({ notification, onRead }: NotificationItemProps
           </h3>
           <div className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
             <Clock className="size-3" />
-            {formatDistanceToNow(notification.timestamp, { addSuffix: true, locale: vi })}
+            {formatDistanceToNow(dateObj, { addSuffix: true, locale: vi })}
           </div>
         </div>
         <p className={cn(

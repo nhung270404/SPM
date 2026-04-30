@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/mongo';
 import mongoose from 'mongoose';
 import Project from '@/models/project.model';
 import User from '@/models/user.model';
+import Notification from '@/models/notification.model';
 import { withApiHandler } from '@/lib/api-handler';
 
 // Bắt buộc API này chạy động để luôn lấy dữ liệu mới nhất
@@ -72,6 +73,22 @@ export async function POST(req: NextRequest, context: any) {
         members: projectMembers,
         taskCount: 0
       });
+
+      // Gửi thông báo cho các thành viên mới
+      const otherMembers = projectMembers.filter(mId => mId.toString() !== userId.toString());
+      if (otherMembers.length > 0) {
+        try {
+          await Promise.all(otherMembers.map(mId => 
+            Notification.create({
+              recipient: mId,
+              type: 'info',
+              title: 'Được thêm vào dự án mới',
+              message: `Bạn đã được thêm vào dự án "${title}" bởi ${user.lastname} ${user.firstname}`,
+              link: '/control/projects'
+            })
+          ));
+        } catch (e) { console.error('Failed to send project member notifications:', e); }
+      }
 
       return NextResponse.json(newProject, { status: 201 });
 

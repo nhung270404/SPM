@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongo';
 import Project from '@/models/project.model';
-import WorkItem from '@/models/work-item.model'; // Import thêm để xóa kèm task nếu cần
+import WorkItem from '@/models/work-item.model';
+import Notification from '@/models/notification.model';
 
 // --- 1. GET: Lấy thông tin chi tiết dự án (Sửa lỗi 404 của cậu) ---
 export async function GET(
@@ -45,14 +46,35 @@ export async function PUT(
     if (body.coverImage !== undefined) updateData.coverImage = body.coverImage;
     if (body.members !== undefined) updateData.members = body.members;
 
+    const existingProject = await Project.findById(id);
+    if (!existingProject) {
+      return NextResponse.json({ error: 'Không tìm thấy dự án' }, { status: 404 });
+    }
+
     const updatedProject = await Project.findByIdAndUpdate(
       id,
       updateData,
-      { new: true } // Trả về dữ liệu mới sau khi update
+      { new: true }
     );
 
-    if (!updatedProject) {
-      return NextResponse.json({ error: 'Không tìm thấy dự án' }, { status: 404 });
+    // Gửi thông báo cho thành viên mới nếu có
+    if (body.members && Array.isArray(body.members)) {
+        const oldMemberIds = existingProject.members.map((m: any) => m.toString());
+        const newMemberIds = body.members.filter((m: any) => !oldMemberIds.includes(m.toString()));
+        
+        if (newMemberIds.length > 0) {
+            try {
+                await Promise.all(newMemberIds.map((mId: string) => 
+                    Notification.create({
+                        recipient: mId,
+                        type: 'info',
+                        title: 'Được thêm vào dự án',
+                        message: `Bạn vừa được thêm vào dự án "${updatedProject!.title}"`,
+                        link: '/control/projects'
+                    })
+                ));
+            } catch (e) { console.error('Member notification error:', e); }
+        }
     }
 
     return NextResponse.json(updatedProject);

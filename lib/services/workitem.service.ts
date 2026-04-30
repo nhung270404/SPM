@@ -1,6 +1,7 @@
 import WorkItem from '@/models/work-item.model';
 import Project from '@/models/project.model';
 import User from '@/models/user.model';
+import Notification from '@/models/notification.model';
 import { connectToDatabase } from '@/lib/mongo';
 
 // Helper: Chuẩn hóa Status từ Frontend (todo -> Todo, in_progress -> In Progress)
@@ -96,6 +97,21 @@ export const createWorkItem = async (projectId: string, body: any) => {
         creator: body.creator || null,
         activities: initialActivities
     });
+    
+    // Gửi thông báo cho người được giao việc
+    if (body.assignee && body.assignee !== body.creator) {
+        try {
+            await Notification.create({
+                recipient: body.assignee,
+                type: 'task',
+                title: 'Công việc mới được giao',
+                message: `Bạn đã được giao công việc mới: "${body.title}" trong dự án ${project.title}`,
+                link: `/control/projects`
+            });
+        } catch (error) {
+            console.error('Failed to send assignment notification:', error);
+        }
+    }
 
     await Project.findByIdAndUpdate(projectId, { taskCount: newCount });
 
@@ -209,6 +225,37 @@ export const updateWorkItem = async (projectId: string, body: any, userId?: stri
             user: userId,
             content: fields.comment
         });
+    }
+
+    // --- GỬI THÔNG BÁO ---
+    
+    // 1. Thông báo khi được giao việc mới (Re-assign)
+    if ('assignee' in updateData && updateData.assignee && updateData.assignee.toString() !== (existingTask.assignee?.toString() || '')) {
+        try {
+            await Notification.create({
+                recipient: updateData.assignee,
+                type: 'task',
+                title: 'Bạn được giao công việc mới',
+                message: `Bạn vừa được chỉ định phụ trách công việc: "${existingTask.title}"`,
+                link: `/control/projects`
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    // 2. Nhắc nhở khi kéo vào In Progress (Sắp đến hạn)
+    if (updateData.status === 'In Progress' && existingTask.status !== 'In Progress') {
+        const recipient = updateData.assignee || existingTask.assignee;
+        if (recipient) {
+            try {
+                await Notification.create({
+                    recipient,
+                    type: 'warning',
+                    title: 'Bắt đầu thực hiện & Nhắc deadline',
+                    message: `Công việc "${existingTask.title}" đã bắt đầu. Thời gian ước tính: ${existingTask.estimate || 0}h. Hãy chú ý hoàn thành đúng hạn!`,
+                    link: `/control/projects`
+                });
+            } catch (e) { console.error(e); }
+        }
     }
 
     const finalUpdate: any = { $set: updateData };

@@ -25,7 +25,7 @@ export function NotificationList({ notifications, onRead }: NotificationListProp
     <div className="flex flex-col min-h-0">
       {notifications.map((notification) => (
         <NotificationItem 
-          key={notification.id} 
+          key={notification.id || (notification as any)._id} 
           notification={notification} 
           onRead={onRead} 
         />

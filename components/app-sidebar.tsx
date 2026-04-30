@@ -32,6 +32,27 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
   const { t } = useTranslation();
   const pathname = usePathname();
   const { state } = useSidebar();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const res = await fetch('/api/notifications');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            const unread = data.filter((n: any) => !n.isRead).length;
+            setUnreadCount(unread);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch unread notifications:', error);
+      }
+    };
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 2000); // Cập nhật cực nhanh mỗi 2s
+    return () => clearInterval(interval);
+  }, []);
 
   const projectMenuStatic = {
     title: "Dự Án",
@@ -65,6 +86,7 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
       url: '/control/notifications',
       icon: Bell,
       isActive: pathname.startsWith('/control/notifications'),
+      badge: unreadCount > 0 ? unreadCount : undefined,
     },
     {
       title: 'Hỗ trợ',
