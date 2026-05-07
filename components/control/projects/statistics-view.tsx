@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
+import { DeadlineRiskPanel } from '../statistics/deadline-risk-panel';
 
 // --- INTERFACES ---
 interface ProjectStats {
@@ -25,7 +25,13 @@ interface ProjectStats {
   memberCount: number;
   progressData: { name: string; completed: number; ongoing: number }[];
   statusDistribution: { name: string; value: number; color: string }[];
-  memberPerformance: { name: string; done: number; total: number; perf: string }[];
+  memberPerformance: { name: string; done: number; total: number; overdue: number; perf: string }[];
+  riskMetrics: {
+    atRiskTasks: number;
+    severelyOverdue: number;
+    dueThisWeek: number;
+    delayRisk: number;
+  };
 }
 
 export function StatisticsView({ projectId }: { projectId: string }) {
@@ -160,6 +166,9 @@ export function StatisticsView({ projectId }: { projectId: string }) {
             ))}
           </div>
 
+          {/* 1.1 DEADLINE RISK PANEL */}
+          <DeadlineRiskPanel metrics={stats.riskMetrics} />
+
           {/* 2. CHARTS AREA */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Area Chart */}
@@ -242,7 +251,8 @@ export function StatisticsView({ projectId }: { projectId: string }) {
                   <tr>
                     <th className="px-6 py-3">Thành viên</th>
                     <th className="px-6 py-3">Hoàn thành / Tổng</th>
-                    <th className="px-6 py-3 w-1/3">Tiến độ</th>
+                    <th className="px-6 py-3 text-center">Quá hạn</th>
+                    <th className="px-6 py-3 w-1/4">Tiến độ</th>
                     <th className="px-6 py-3 text-right">Đánh giá</th>
                   </tr>
                   </thead>
@@ -254,6 +264,15 @@ export function StatisticsView({ projectId }: { projectId: string }) {
                         {user.name}
                       </td>
                       <td className="px-6 py-3 text-zinc-600 dark:text-zinc-300 font-mono font-medium">{user.done} <span className="text-zinc-400">/ {user.total}</span></td>
+                      <td className="px-6 py-3 text-center">
+                        {user.overdue > 0 ? (
+                          <Badge className="bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border-none font-bold font-mono">
+                            {user.overdue}
+                          </Badge>
+                        ) : (
+                          <span className="text-zinc-400 font-mono">-</span>
+                        )}
+                      </td>
                       <td className="px-6 py-3">
                         <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                           <div className="h-full bg-primary rounded-full" style={{ width: user.total > 0 ? `${(user.done/user.total)*100}%` : '0%' }}></div>
@@ -266,7 +285,7 @@ export function StatisticsView({ projectId }: { projectId: string }) {
                       </td>
                     </tr>
                   )) : (
-                    <tr><td colSpan={4} className="text-center py-8 text-zinc-500 italic">Chưa có dữ liệu</td></tr>
+                    <tr><td colSpan={5} className="text-center py-8 text-zinc-500 italic">Chưa có dữ liệu</td></tr>
                   )}
                   </tbody>
                 </table>

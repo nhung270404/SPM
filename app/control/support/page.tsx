@@ -28,26 +28,53 @@ export default function SupportPage() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = (content: string) => {
-    // Thêm tin nhắn của người dùng
+  const handleSendMessage = async (content: string) => {
     const userMessage: Message = {
       id: Date.now().toString(),
       content,
       sender: 'user',
       timestamp: new Date(),
     };
-    setMessages(prev => [...prev, userMessage]);
 
-    // Giả lập phản hồi của bot sau 1 giây
-    setTimeout(() => {
+    setMessages((prev) => [...prev, userMessage]);
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: content,
+          projectId: 'all',
+        }),
+      });
+
+      const json = await res.json();
+
       const botResponse: Message = {
         id: (Date.now() + 1).toString(),
-        content: `Cảm ơn bạn đã hỏi về "${content}". Đây là phản hồi tự động từ hệ thống. Chúng tôi sẽ kết nối bạn với hỗ trợ viên nếu cần thiết.`,
+        content:
+            json.reply ||
+            json.message ||
+            'Tôi chưa thể trả lời lúc này. Vui lòng thử lại sau.',
         sender: 'bot',
         timestamp: new Date(),
       };
-      setMessages(prev => [...prev, botResponse]);
-    }, 1000);
+
+      setMessages((prev) => [...prev, botResponse]);
+    } catch (error) {
+      console.error('Chat fetch error:', error);
+
+      const botResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        content: 'Có lỗi khi kết nối AI chatbot.',
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, botResponse]);
+    }
   };
 
   return (

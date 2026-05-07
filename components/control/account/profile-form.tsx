@@ -206,7 +206,18 @@ export function ProfileForm() {
             </div>
             <div className="space-y-2">
               <Label className={labelClass}>Số điện thoại</Label>
-              <div className="relative"><Phone className={iconClass} /><Input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className={inputClass} /></div>
+              <div className="relative">
+                <Phone className={iconClass} />
+                <Input 
+                  value={form.phone} 
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setForm({...form, phone: val});
+                  }} 
+                  className={inputClass} 
+                  placeholder="09xxxxxxxx"
+                />
+              </div>
             </div>
           </div>
         </div>

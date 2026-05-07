@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { StatsCards } from './stats-cards';
 import { MemberLeaderboard } from './member-leaderboard';
 import { StatusPieChart } from './status-pie-chart';
-import { TeamVelocityChart } from './team-velocity-chart';
+import { DeadlineRiskPanel } from './deadline-risk-panel';
 
 export function StatisticsView() {
   const [data, setData] = React.useState<any>(null);
@@ -176,8 +176,8 @@ export function StatisticsView() {
             </div>
           </div>
 
-          {/* 3. TEAM VELOCITY CHART */}
-          <TeamVelocityChart members={data.memberLeaderboard} />
+          {/* 3. DEADLINE RISK PANEL */}
+          <DeadlineRiskPanel metrics={data.summary.riskMetrics} />
         </>
       )}
     </div>

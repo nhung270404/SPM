@@ -22,40 +22,40 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
+import { useUser } from '@/context/user-context';
 
 
-// --- SUB-COMPONENT: STAT CARD ---
-function StatCard({ title, value, icon: Icon, description, trend, colorClass }: {
+// --- SUB-COMPONENT: COMPACT STAT CARD ---
+function StatCard({ title, value, icon: Icon, description, colorClass }: {
   title: string;
   value: string | number;
   icon: any;
   description: string;
-  trend?: string;
   colorClass: string;
 }) {
   return (
-    <Card className="relative overflow-hidden bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-white/20 dark:border-white/5 shadow-xl shadow-slate-200/10 dark:shadow-none group hover:translate-y-[-2px] transition-all duration-300">
-      <div className={cn("absolute top-0 left-0 w-1.5 h-full", colorClass)} />
-      <CardContent className="p-5 lg:p-6">
-        <div className="flex justify-between items-start">
-          <div className="space-y-1.5">
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{title}</p>
-            <h3 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-none">{value}</h3>
-            <div className="flex items-center gap-1.5 pt-1">
-              {trend && <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-500">{trend}</span>}
-              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">{description}</p>
-            </div>
-          </div>
-          <div className={cn("p-3 rounded-xl bg-white/80 dark:bg-slate-800 shadow-sm group-hover:scale-110 transition-transform duration-300", colorClass.replace('bg-', 'text-'))}>
-            <Icon className="h-5 w-5" />
+    <div className="flex-1 min-w-[240px] relative overflow-hidden bg-white/50 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/5 rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.02)] transition-all duration-300 hover:shadow-[0_15px_40px_rgba(54,202,241,0.1)] hover:-translate-y-1 group">
+      <div className="flex items-center gap-4">
+        <div className={cn("p-3 rounded-2xl bg-white dark:bg-slate-800 shadow-sm transition-transform duration-500 group-hover:scale-110", colorClass.replace('bg-', 'text-'))}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="space-y-0.5">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">{title}</p>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{value}</h3>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">{description}</span>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      <div className={cn("absolute bottom-0 left-0 right-0 h-1 opacity-20", colorClass)} />
+    </div>
   );
 }
 
 export function UserManagementView() {
+  const { user: currentUser } = useUser();
+  const isAdmin = currentUser?.roles?.some((r: any) => r.level <= 1) || false;
+
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -68,7 +68,6 @@ export function UserManagementView() {
       const response = await fetch('/api/user/list');
       if (response.ok) {
         const data = await response.json();
-        // Ánh xạ dữ liệu từ MongoDB sang Format của UI
         const mappedData = data.map((u: any) => ({
           id: u._id,
           name: `${u.lastname} ${u.firstname}`,
@@ -98,7 +97,6 @@ export function UserManagementView() {
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Reset page when search changes
   React.useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
@@ -108,18 +106,19 @@ export function UserManagementView() {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const currentUsers = filteredUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
+  // --- LOGIC TÍNH TOÁN SỐ LIỆU ---
   const totalUsers = users.length;
-  const activeUsers = users.filter(u => u.status === 'Active').length;
-  const adminUsers = users.filter(u => u.role === 'Admin' || u.role === 'Quản trị viên').length;
+  const adminUsersCount = users.filter(u => u.role === 'Admin' || u.role === 'Quản trị viên').length;
+  const regularMembersCount = totalUsers - adminUsersCount;
 
-  const glassCardClass = "bg-white/60 dark:bg-slate-950/40 backdrop-blur-3xl border-white/20 dark:border-white/5 shadow-2xl shadow-slate-200/20 dark:shadow-none transition-all duration-500";
+  const glassCardClass = "bg-white/60 dark:bg-slate-950/40 backdrop-blur-3xl border border-white/20 dark:border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.04)] transition-all duration-500";
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await fetchUsers();
     setTimeout(() => {
       setIsRefreshing(false);
-      toast.success("Đã đồng bộ dữ liệu nhân sự thực tế");
+      toast.success("Đã đồng bộ dữ liệu nhân sự");
     }, 500);
   };
 
@@ -141,27 +140,22 @@ export function UserManagementView() {
   };
 
   return (
-    <div className="flex flex-col h-full w-full space-y-6 lg:space-y-8 p-4 md:p-6 lg:px-10 lg:py-8 overflow-y-auto custom-scrollbar bg-[radial-gradient(circle_at_top_right,_rgba(54,202,241,0.08),transparent_50%)]">
+    <div className="flex flex-col h-full w-full p-6 lg:p-10 lg:pt-8 overflow-y-auto custom-scrollbar bg-[radial-gradient(circle_at_top_right,_rgba(54,202,241,0.05),transparent_40%)]">
 
-      {/* --- HEADER SECTION --- */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-2">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="h-1 w-8 bg-[#36caf1] rounded-full" />
-            <span className="text-xs font-bold uppercase tracking-wider text-[#36caf1]">Hệ thống quản trị SPM</span>
+      {/* --- REFINED HEADER SECTION --- */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="h-1 w-6 bg-[#36caf1] rounded-full" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#36caf1]">Nhân sự hệ thống</span>
           </div>
-          <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Nhân sự ZenWork
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium text-sm lg:text-base max-w-2xl leading-relaxed">
-            Xem danh sách, phân quyền và giám sát hoạt động của đội ngũ trong toàn hệ thống.
-          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 self-start lg:self-center">
+        <div className="flex items-center gap-2 bg-white/50 dark:bg-white/5 p-1.5 rounded-2xl border border-white/20 shadow-sm backdrop-blur-md">
           <Button
-            variant="outline"
-            className="h-10 px-4 rounded-xl border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all font-semibold text-xs"
+            variant="ghost"
+            size="sm"
+            className="h-9 px-4 rounded-xl text-slate-600 hover:text-cyan-500 hover:bg-cyan-500/10 transition-all font-bold text-[11px] uppercase tracking-wider"
             onClick={handleRefresh}
             disabled={isRefreshing}
           >
@@ -170,63 +164,66 @@ export function UserManagementView() {
           </Button>
 
           <Button
-            variant="outline"
-            className="h-10 px-4 rounded-xl bg-white/50 dark:bg-slate-800/50 border-white/20 hover:bg-white transition-all font-semibold text-xs"
+            variant="ghost"
+            size="sm"
+            className="h-9 px-4 rounded-xl text-slate-600 hover:text-emerald-500 hover:bg-emerald-500/10 transition-all font-bold text-[11px] uppercase tracking-wider"
             onClick={handleExportExcel}
           >
-            <Download className="mr-2 h-3.5 w-3.5 text-emerald-500" />
-            Xuất Excel
+            <Download className="mr-2 h-3.5 w-3.5" />
+            Excel
           </Button>
 
-          <Button className="h-10 px-5 rounded-xl bg-[#36caf1] hover:bg-[#03bdd8] text-white shadow-lg shadow-[#36caf1]/20 transition-all font-bold text-xs group" asChild>
-            <Link href="/control/user/create">
-              <UserPlus className="mr-2 h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-              Thêm nhân viên
-            </Link>
-          </Button>
+          {isAdmin && (
+            <Button className="h-9 px-5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white shadow-lg shadow-cyan-500/20 transition-all font-black text-[11px] uppercase tracking-wider group" asChild>
+              <Link href="/control/user/create">
+                <UserPlus className="mr-2 h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
+                Thêm thành viên
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* --- STATS OVERVIEW --- */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+      {/* --- COMPACT STATS ROW --- */}
+      <div className="flex flex-wrap gap-4 lg:gap-5 mb-8">
         <StatCard
-          title="Tổng nhân sự"
+          title="Tổng số thành viên"
           value={totalUsers}
           icon={Users}
-          description="Thành viên tổ chức"
-          colorClass="bg-[#36caf1]"
+          description="tất cả"
+          colorClass="bg-cyan-500"
         />
         <StatCard
-          title="Đang trực tuyến"
-          value={activeUsers}
+          title="Thành viên"
+          value={regularMembersCount}
           icon={UserCheck}
-          description="Hiện hành đang online"
+          description="nhân viên"
           colorClass="bg-emerald-500"
         />
         <StatCard
           title="Quản trị viên"
-          value={adminUsers}
+          value={adminUsersCount}
           icon={ShieldCheck}
-          description="Nhân sự cấp cao"
+          description="quản trị"
           colorClass="bg-indigo-500"
         />
       </div>
 
-      {/* --- MAIN CONTENT AREA --- */}
+      {/* --- REFINED MAIN CONTENT --- */}
       <Card className={cn("overflow-hidden border-none", glassCardClass)}>
         <CardHeader className="p-6 lg:p-8 pb-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-1">
-              <CardTitle className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <CardTitle className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
                 Danh sách thành viên
               </CardTitle>
             </div>
 
-            <div className="relative w-full md:w-80 lg:w-96 group">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-[#36caf1] transition-colors" />
+            <div className="relative w-full md:w-72 lg:w-80 group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 group-focus-within:text-cyan-500 transition-colors" />
               <Input
-                placeholder="Tìm nhân viên, chức vụ, phòng ban..."
-                className="h-11 pl-10 pr-4 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800 focus:bg-white dark:focus:bg-slate-900 transition-all ring-offset-transparent focus-visible:ring-[#36caf1]/20 font-medium text-sm"
+                placeholder="Tìm thành viên, chức vụ..."
+                className="h-10 pl-10 pr-4 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800 focus:bg-white dark:focus:bg-slate-900 transition-all ring-offset-transparent focus-visible:ring-cyan-500/20 font-bold text-xs"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -238,38 +235,38 @@ export function UserManagementView() {
           <div className="overflow-x-auto min-h-[300px]">
              {loading ? (
                 <div className="flex flex-col items-center justify-center p-20 space-y-4">
-                   <Loader2 className="h-10 w-10 text-[#36caf1] animate-spin" />
-                   <p className="text-sm font-bold text-slate-400">Đang tải danh sách nhân sự thực tế...</p>
+                   <Loader2 className="h-10 w-10 text-cyan-500 animate-spin" />
+                   <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">Đang tải dữ liệu...</p>
                 </div>
              ) : (
                 <Table>
                   <TableHeader className="bg-slate-50/30 dark:bg-slate-900/20 border-y border-slate-100 dark:border-slate-800">
-                    <TableRow className="hover:bg-transparent px-2">
-                      <TableHead className="min-w-[280px] px-8 py-4 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">Họ và tên / Email</TableHead>
-                      <TableHead className="min-w-[180px] py-4 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400 text-center">Vị trí / Phòng ban</TableHead>
-                      <TableHead className="min-w-[150px] py-4 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400 text-center">Trạng thái</TableHead>
-                      <TableHead className="min-w-[150px] py-4 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">Truy cập</TableHead>
-                      <TableHead className="w-[80px] px-6 py-4 text-right"></TableHead>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="min-w-[280px] px-8 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">Họ và tên / Email</TableHead>
+                      <TableHead className="min-w-[180px] py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">Vị trí / Phòng ban</TableHead>
+                      <TableHead className="min-w-[150px] py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">Trạng thái</TableHead>
+                      <TableHead className="min-w-[150px] py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">Truy cập</TableHead>
+                      <TableHead className="w-[80px] px-6 py-3 text-right"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {currentUsers.length > 0 ? (
                       currentUsers.map((user) => (
-                        <TableRow key={user.id} className="group/row hover:bg-[#36caf1]/[0.02] dark:hover:bg-[#36caf1]/[0.05] border-slate-100 dark:border-slate-800 transition-all duration-300">
+                        <TableRow key={user.id} className="group/row hover:bg-cyan-500/[0.02] dark:hover:bg-cyan-500/[0.05] border-slate-100 dark:border-slate-800 transition-all duration-300">
 
                           <TableCell className="px-8 py-4">
                             <div className="flex items-center gap-4">
-                              <Avatar className="h-11 w-11 rounded-xl shadow-sm ring-2 ring-white dark:ring-slate-800 group-hover/row:scale-105 transition-transform duration-300">
+                              <Avatar className="h-10 w-10 rounded-2xl shadow-sm ring-2 ring-white dark:ring-slate-800 transition-transform duration-300 group-hover/row:scale-105">
                                 <AvatarImage src={user.avatar} className="object-cover" />
-                                <AvatarFallback className="bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 font-bold text-base uppercase">
+                                <AvatarFallback className="bg-cyan-500 text-white font-black text-sm uppercase">
                                   {user.name ? user.name.charAt(0).toUpperCase() : "?"}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex flex-col min-w-0">
-                                <span className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover/row:text-[#36caf1] transition-colors leading-tight">
+                                <span className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover/row:text-cyan-500 transition-colors">
                                   {user.name}
                                 </span>
-                                <span className="text-[12px] text-slate-500 dark:text-slate-400 truncate mt-0.5 leading-none">{user.email}</span>
+                                <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{user.email}</span>
                               </div>
                             </div>
                           </TableCell>
@@ -278,15 +275,15 @@ export function UserManagementView() {
                             <div className="flex flex-col items-center gap-1">
                               <Badge
                                 className={cn(
-                                  "text-[10px] font-bold px-2 py-0.5 rounded-md border-none",
+                                  "text-[9px] font-black px-2 py-0.5 rounded-lg border-none shadow-sm uppercase tracking-tighter",
                                   user.role === 'Admin' || user.role === 'Quản trị viên'
-                                    ? "bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400"
-                                    : "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400"
+                                    ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400"
+                                    : "bg-cyan-50 text-cyan-600 dark:bg-cyan-500/20 dark:text-cyan-400"
                                 )}
                               >
                                 {user.role}
                               </Badge>
-                              <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">{user.department}</span>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{user.department}</span>
                             </div>
                           </TableCell>
 
@@ -294,49 +291,55 @@ export function UserManagementView() {
                             <div className="flex justify-center">
                               <Badge
                                 className={cn(
-                                  "rounded-full px-2.5 py-0.5 text-[10px] font-bold flex items-center gap-1.5 border-none shadow-inner",
+                                  "rounded-full px-2.5 py-0.5 text-[9px] font-black flex items-center gap-1.5 border-none shadow-inner uppercase tracking-widest",
                                   user.status === 'Active'
                                     ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
                                     : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                                 )}
                               >
                                 <span className={cn("h-1.5 w-1.5 rounded-full", user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400')} />
-                                {user.status === 'Active' ? 'Hoạt động' : 'Ngoại tuyến'}
+                                {user.status === 'Active' ? 'Active' : 'Offline'}
                               </Badge>
                             </div>
                           </TableCell>
 
                           <TableCell className="py-4">
-                            <div className="flex flex-col">
-                              <span className="text-[12px] font-bold text-slate-700 dark:text-slate-300">{user.lastActive}</span>
-                            </div>
+                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{user.lastActive}</span>
                           </TableCell>
 
                           <TableCell className="px-6 py-4 text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                                   <MoreHorizontal className="h-4 w-4 text-slate-400 group-hover/row:text-slate-600" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-52 p-1.5 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-slate-200 dark:border-slate-800 shadow-2xl">
-                                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group/item">
-                                  <UserIcon className="h-4 w-4 text-blue-500 group-hover/item:scale-110" />
-                                  <span className="font-semibold text-sm">Xem chi tiết</span>
+                              <DropdownMenuContent align="end" className="w-52 p-1.5 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-800 shadow-2xl">
+                                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group/item">
+                                  <UserIcon className="h-4 w-4 text-cyan-500 group-hover/item:scale-110 transition-transform" />
+                                  <span className="font-bold text-xs uppercase tracking-wider">Xem chi tiết</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group/item">
-                                  <Edit className="h-4 w-4 text-cyan-500 group-hover/item:scale-110" />
-                                  <span className="font-semibold text-sm">Sửa hồ sơ</span>
+                                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group/item">
+                                  <MailPlus className="h-4 w-4 text-indigo-500 group-hover/item:scale-110 transition-transform" />
+                                  <span className="font-bold text-xs uppercase tracking-wider">Gửi mail</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group/item">
-                                  <MailPlus className="h-4 w-4 text-[#36caf1] group-hover/item:scale-110" />
-                                  <span className="font-semibold text-sm">Gửi mail</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator className="my-1.5 opacity-50" />
-                                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer bg-red-50/50 hover:bg-red-50 dark:bg-red-900/10 text-red-600 transition-all group/item">
-                                  <Trash2 className="h-4 w-4" />
-                                  <span className="font-bold text-sm text-red-600">Xóa dữ liệu</span>
-                                </DropdownMenuItem>
+                                
+                                {isAdmin && (
+                                  <>
+                                    <DropdownMenuSeparator className="my-1.5 opacity-50" />
+                                    <DropdownMenuItem 
+                                      className="flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer bg-red-50/50 hover:bg-red-50 dark:bg-red-900/10 text-red-600 transition-all group/item"
+                                      onClick={() => {
+                                        if (window.confirm(`Bạn có chắc chắn muốn xóa nhân viên ${user.name}?`)) {
+                                          toast.error("Chức năng xóa đang được phát triển");
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      <span className="font-black text-xs uppercase tracking-wider">Xóa dữ liệu</span>
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
@@ -346,9 +349,9 @@ export function UserManagementView() {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={5} className="h-60 text-center">
-                          <div className="flex flex-col items-center justify-center space-y-3 opacity-30">
-                            <Users className="h-10 w-10" />
-                            <p className="text-sm font-bold">Không tìm thấy nhân viên nào phù hợp</p>
+                          <div className="flex flex-col items-center justify-center space-y-3 opacity-20">
+                            <Users className="h-12 w-12" />
+                            <p className="text-[11px] font-black uppercase tracking-widest">Không tìm thấy kết quả</p>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -360,14 +363,14 @@ export function UserManagementView() {
         </CardContent>
 
         <div className="p-6 bg-slate-50/20 dark:bg-slate-900/10 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="text-xs text-slate-500 font-medium">
-            Hiển thị {filteredUsers.length > 0 ? startIndex + 1 : 0} - {Math.min(startIndex + ITEMS_PER_PAGE, filteredUsers.length)} trong tổng số {filteredUsers.length} thành viên
+          <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
+             {filteredUsers.length} thành viên
           </div>
           <div className="flex gap-1.5">
              <Button 
                variant="ghost" 
                size="sm" 
-               className="h-8 text-[11px] font-bold rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white disabled:opacity-50" 
+               className="h-8 px-3 text-[10px] font-black uppercase tracking-widest rounded-xl text-slate-400 hover:text-cyan-500 disabled:opacity-30" 
                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                disabled={currentPage === 1 || totalPages === 0}
              >
@@ -377,13 +380,13 @@ export function UserManagementView() {
              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                <Button 
                  key={page}
-                 variant={currentPage === page ? "default" : "outline"}
+                 variant="ghost"
                  size="sm" 
                  className={cn(
-                   "h-8 w-8 text-[11px] font-bold rounded-lg shadow-sm transition-all",
+                   "h-8 w-8 text-[11px] font-black rounded-xl transition-all",
                    currentPage === page 
-                     ? "bg-[#36caf1] text-white hover:bg-[#03bdd8] border-none" 
-                     : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                     ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/20" 
+                     : "text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/10"
                  )}
                  onClick={() => setCurrentPage(page)}
                >
@@ -394,7 +397,7 @@ export function UserManagementView() {
              <Button 
                variant="ghost" 
                size="sm" 
-               className="h-8 text-[11px] font-bold rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white disabled:opacity-50" 
+               className="h-8 px-3 text-[10px] font-black uppercase tracking-widest rounded-xl text-slate-400 hover:text-cyan-500 disabled:opacity-30" 
                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                disabled={currentPage === totalPages || totalPages === 0}
              >

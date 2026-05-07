@@ -5,35 +5,27 @@ import Project from '@/models/project.model';
 import User from '@/models/user.model';
 import Notification from '@/models/notification.model';
 import { withApiHandler } from '@/lib/api-handler';
+import { isAdmin } from '@/lib/auth';
 
 // Bắt buộc API này chạy động để luôn lấy dữ liệu mới nhất
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // 1. Kết nối DB
     await connectToDatabase();
-
-    // 2. Gọi nhẹ model User để đảm bảo nó đã được init (tránh lỗi "Schema hasn't been registered")
-    // Không cần làm gì cả, chỉ cần import ở trên là đủ, nhưng cẩn thận thì log ra 1 cái
     if (!mongoose.models.User) {
-      console.log("⚠️ Model User chưa được load, đang init...");
-      // Dòng này chỉ để trigger việc load file model nếu cần
       new User({});
     }
 
-    // 3. Query
     const projects = await Project.find({})
       .sort({ createdAt: -1 })
       .populate('manager', 'firstname lastname email avatar')
-      .populate('members', 'firstname lastname email avatar'); // Populate thêm thông tin thành viên
+      .populate('members', 'firstname lastname email avatar');
 
     return NextResponse.json(projects);
 
   } catch (error: any) {
-    // [QUAN TRỌNG] In lỗi ra Terminal để biết chính xác bị gì
     console.error("❌ Lỗi SERVER API Projects:", error);
-
     return NextResponse.json(
       { error: error.message || "Lỗi Server Internal" },
       { status: 500 }
@@ -43,8 +35,16 @@ export async function GET() {
 
 export async function POST(req: NextRequest, context: any) {
   return withApiHandler(req, context, async (req, user, userId) => {
+    // CHẶN: Chỉ Admin mới được tạo dự án
+    if (!isAdmin(user)) {
+        return NextResponse.json(
+          { error: "Bạn không có quyền tạo dự án. Chỉ Quản trị viên mới thực hiện được hành động này." },
+          { status: 403 }
+        );
+    }
+
     try {
-      const { title, description, key, members: bodyMembers } = await req.json();
+      const { title, description, key, manager: bodyManager, members: bodyMembers } = await req.json();
 
       if (!title || !key) {
         return NextResponse.json(
@@ -53,7 +53,6 @@ export async function POST(req: NextRequest, context: any) {
         );
       }
 
-      // Kiểm tra trùng Key
       const existingProject = await Project.findOne({ key: key.toUpperCase() });
       if (existingProject) {
         return NextResponse.json(
@@ -62,19 +61,20 @@ export async function POST(req: NextRequest, context: any) {
         );
       }
 
-      // Đảm bảo manager luôn nằm trong members và không bị trùng
-      const projectMembers = Array.from(new Set([userId, ...(bodyMembers || [])]));
+      // Xác định Leader (Manager) của dự án
+      const projectManager = bodyManager || userId;
+      // Đảm bảo Manager và người tạo (Admin) luôn có trong danh sách thành viên
+      const projectMembers = Array.from(new Set([projectManager, userId, ...(bodyMembers || [])]));
 
       const newProject = await Project.create({
         title,
         description,
         key: key.toUpperCase(),
-        manager: userId,
+        manager: projectManager,
         members: projectMembers,
         taskCount: 0
       });
 
-      // Gửi thông báo cho các thành viên mới
       const otherMembers = projectMembers.filter(mId => mId.toString() !== userId.toString());
       if (otherMembers.length > 0) {
         try {

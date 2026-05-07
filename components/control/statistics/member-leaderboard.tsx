@@ -9,6 +9,7 @@ interface MemberStats {
   name: string;
   completed: number;
   inProgress: number;
+  overdue: number;
   efficiency: number;
   avatar: string;
 }
@@ -40,7 +41,7 @@ export function MemberLeaderboard({ members }: { members: MemberStats[] }) {
                           {member.name}
                         </span>
                         <span className="text-[10px] text-slate-400 font-medium">
-                          {member.completed} đã xong • {member.inProgress} đang làm
+                          {member.completed} đã xong • {member.inProgress} đang làm • <span className={member.overdue > 0 ? "text-rose-500 font-bold" : ""}>{member.overdue} quá hạn</span>
                         </span>
                     </div>
                   </div>

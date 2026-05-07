@@ -39,8 +39,8 @@ export function StatsCards({ summary }: { summary: any }) {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <StatCard title="Tổng Task" value={summary.totalTasks} icon={Target} color="cyan" />
       <StatCard title="Đã Hoàn Thành" value={summary.completedTasks} icon={CheckCircle2} color="green" />
-      <StatCard title="Hiệu suất" value={summary.efficiencyRate} icon={TrendingUp} color="blue" />
       <StatCard title="Task Quá Hạn" value={summary.overdueTasks} icon={AlertCircle} color="red" />
+      <StatCard title="Hiệu suất" value={summary.efficiencyRate} icon={TrendingUp} color="blue" />
     </div>
   );
 }

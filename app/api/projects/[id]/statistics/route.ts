@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongo';
 import WorkItem from '@/models/work-item.model';
+import { getAIInsight } from '@/lib/gemini';
 import { Types } from 'mongoose';
 
 // Hàm helper để map màu cho trạng thái (Cậu có thể chỉnh theo ý thích)
@@ -42,12 +43,26 @@ export async function GET(
     let completedTasks = 0;
     let inProgressTasks = 0;
     let overdueTasks = 0;
+    let atRiskTasks = 0;
+    let severelyOverdue = 0;
+    let dueThisWeek = 0;
+
+    const fortyEightHoursLater = new Date(now.getTime() + (48 * 60 * 60 * 1000));
+    const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
+
+    // Tính toán tuần hiện tại
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
+    startOfWeek.setHours(0, 0, 0, 0);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
 
     // Map để đếm status cho biểu đồ tròn
     const statusCountMap: Record<string, number> = {};
 
     // Map để tính hiệu suất thành viên
-    const memberMap: Record<string, { name: string; done: number; total: number }> = {};
+    const memberMap: Record<string, { name: string; done: number; total: number; overdue: number }> = {};
 
     tasks.forEach((task: any) => {
       const status = task.status || 'Unknown';
@@ -62,13 +77,27 @@ export async function GET(
         inProgressTasks++;
       }
 
-      // Check quá hạn (Chưa xong VÀ ngày deadline < hiện tại)
-      if (
-        !['done', 'completed', 'cancel'].includes(status.toLowerCase()) &&
-        task.dueDate &&
-        new Date(task.dueDate) < now
-      ) {
-        overdueTasks++;
+      // Check rủi ro deadline
+      if (!['done', 'completed', 'cancel'].includes(status.toLowerCase()) && task.dueDate) {
+        const dueDate = new Date(task.dueDate);
+        
+        // Quá hạn chung
+        if (dueDate < now) {
+          overdueTasks++;
+          // Quá hạn nặng (> 3 ngày)
+          if (dueDate < threeDaysAgo) {
+            severelyOverdue++;
+          }
+        } 
+        // Sắp hết hạn (trong 48h tới)
+        else if (dueDate < fortyEightHoursLater) {
+          atRiskTasks++;
+        }
+
+        // Hết hạn trong tuần này
+        if (dueDate >= startOfWeek && dueDate <= endOfWeek) {
+          dueThisWeek++;
+        }
       }
 
       // Tính hiệu suất thành viên
@@ -78,12 +107,23 @@ export async function GET(
         const fullName = `${task.assignee.lastname || ''} ${task.assignee.firstname || ''}`.trim() || task.assignee.email;
 
         if (!memberMap[userId]) {
-          memberMap[userId] = { name: fullName, done: 0, total: 0 };
+          memberMap[userId] = { name: fullName, done: 0, total: 0, overdue: 0 };
         }
 
-        memberMap[userId].total++;
-        if (['done', 'completed'].includes(status.toLowerCase())) {
-          memberMap[userId].done++;
+        if (status.toLowerCase() !== 'cancel') {
+          memberMap[userId].total++;
+          if (['done', 'completed'].includes(status.toLowerCase())) {
+            memberMap[userId].done++;
+          }
+          
+          // Check quá hạn cho từng thành viên
+          if (
+            !['done', 'completed', 'cancel'].includes(status.toLowerCase()) &&
+            task.dueDate &&
+            new Date(task.dueDate) < now
+          ) {
+            memberMap[userId].overdue++;
+          }
         }
       }
     });
@@ -100,6 +140,7 @@ export async function GET(
       name: m.name,
       done: m.done,
       total: m.total,
+      overdue: m.overdue,
       perf: m.total > 0 ? `${Math.round((m.done / m.total) * 100)}%` : '0%'
     })).sort((a, b) => b.total - a.total); // Sắp xếp người làm nhiều nhất lên đầu
 
@@ -134,12 +175,38 @@ export async function GET(
       });
     }
 
+    // 5.1 GENERATE AI INSIGHT
+    let aiInsight = "";
+    const efficiencyRate = totalActiveTasks > 0 ? Math.round((completedTasks / totalActiveTasks) * 100) : 0;
+
+    const realAIInsight = await getAIInsight({
+      totalTasks: tasks.length,
+      completedTasks,
+      overdueTasks,
+      atRiskTasks,
+      severelyOverdue,
+      efficiencyRate: `${efficiencyRate}%`
+    });
+
+    if (realAIInsight) {
+      aiInsight = realAIInsight;
+    } else {
+      aiInsight = "AI Insight đang tạm thời không khả dụng. Vui lòng kiểm tra cấu hình API Key.";
+    }
+
     // 6. Trả về kết quả JSON đúng format Frontend cần
     return NextResponse.json({
       totalTasks: tasks.length,
       completedTasks,
       inProgressTasks,
       overdueTasks,
+      riskMetrics: {
+        atRiskTasks,
+        severelyOverdue,
+        dueThisWeek,
+        delayRisk,
+        aiInsight
+      },
       memberCount: Object.keys(memberMap).length,
       progressData,
       statusDistribution,

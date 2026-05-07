@@ -167,7 +167,9 @@ html, body { touch-action: pan-y; }
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-  .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+  
+  .custom-scrollbar { -ms-overflow-style: auto !important; scrollbar-width: thin !important; }
+  .custom-scrollbar::-webkit-scrollbar { display: block !important; width: 6px; height: 6px; }
   .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
   .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--primary); opacity: 0.8; }
@@ -255,43 +257,6 @@ div[data-sidebar="sidebar"] { background-color: var(--sidebar) !important; borde
 }
 
 /* Status variants using system colors */
-.premium-toast[data-type="success"] {
-  border-color: color-mix(in oklch, var(--primary), transparent 50%) !important;
-  box-shadow: 0 15px 40px -10px color-mix(in oklch, var(--primary), transparent 70%) !important;
-}
-
-.premium-toast[data-type="error"] {
-  border-color: color-mix(in oklch, var(--destructive), transparent 50%) !important;
-  box-shadow: 0 15px 40px -10px color-mix(in oklch, var(--destructive), transparent 75%) !important;
-}
-
-.premium-toast[data-type="warning"] {
-  border-color: rgba(234, 179, 8, 0.4) !important;
-  box-shadow: 0 15px 40px -10px rgba(234, 179, 8, 0.2) !important;
-}
-
-.premium-toast[data-type="info"] {
-  border-color: color-mix(in oklch, var(--primary), transparent 60%) !important;
-  box-shadow: 0 15px 40px -10px color-mix(in oklch, var(--primary), transparent 80%) !important;
-}
-
-/* Icon alignment and colors */
 .premium-toast [data-icon] {
   flex-shrink: 0 !important;
-}
-
-.premium-toast[data-type="success"] [data-icon] {
-  color: var(--primary) !important;
-}
-
-.premium-toast[data-type="error"] [data-icon] {
-  color: var(--destructive) !important;
-}
-
-.premium-toast[data-type="warning"] [data-icon] {
-  color: #eab308 !important;
-}
-
-.premium-toast[data-type="info"] [data-icon] {
-  color: var(--primary) !important;
 }

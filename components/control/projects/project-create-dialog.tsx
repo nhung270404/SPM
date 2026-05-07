@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Briefcase, Users, Plus, Trash2, KeyRound, UserPlus, Save, Loader2, X
+  Briefcase, Users, Plus, Trash2, KeyRound, UserPlus, Save, Loader2, X, ShieldCheck, Crown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose
 } from '@/components/ui/dialog';
@@ -21,16 +22,17 @@ import { cn } from '@/lib/utils';
 import axios from 'axios';
 
 export type Member = {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   avatar: string;
+  isLeader?: boolean;
 };
 
 interface ProjectCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void; // Update type to match usage if needed
+  onSuccess?: () => void;
 }
 
 export function ProjectCreateDialog({ open, onOpenChange, onSuccess }: ProjectCreateDialogProps) {
@@ -40,12 +42,10 @@ export function ProjectCreateDialog({ open, onOpenChange, onSuccess }: ProjectCr
   const [newMemberName, setNewMemberName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [paginationData, setPaginationData] = useState<any>(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false); // Trạng thái focus của ô tìm kiếm
+  const [members, setMembers] = useState<Member[]>([]);
 
-  const [members, setMembers] = useState<any[]>([]);
-
-  // 1. Fetch current user to add as manager/first member
+  // 1. Khởi tạo danh sách thành viên (Mặc định thêm Admin)
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
@@ -58,7 +58,7 @@ export function ProjectCreateDialog({ open, onOpenChange, onSuccess }: ProjectCr
             name: `${u.lastname} ${u.firstname}`.trim() || u.email,
             email: u.email,
             avatar: u.avatar || '',
-            isOwner: true
+            isLeader: true 
           }]);
         }
       } catch (error) {
@@ -68,39 +68,24 @@ export function ProjectCreateDialog({ open, onOpenChange, onSuccess }: ProjectCr
     if (open) fetchCurrentUser();
   }, [open]);
 
-  // 2. Real-time User Search with Pagination
-  const searchUsers = async (pageValue: number = 1) => {
+  // 2. Tìm kiếm nhân sự
+  const searchUsers = async () => {
     try {
-      const res = await fetch(`/api/user/search?q=${newMemberName}&page=${pageValue}&limit=10`);
+      // Tìm kiếm ngay cả khi chuỗi rỗng để hiển thị gợi ý khi focus
+      const res = await fetch(`/api/user/search?q=${newMemberName}&limit=10`);
       const data = await res.json();
       setSearchResults(data.users || []);
-      setPaginationData({
-        total: data.total,
-        totalPages: data.totalPages,
-        page: data.page
-      });
-      setCurrentPage(data.page);
     } catch (error) {
       console.error("Search error:", error);
     }
   };
 
   useEffect(() => {
-    const debounce = setTimeout(() => searchUsers(1), 300);
+    const debounce = setTimeout(() => {
+        if (open) searchUsers();
+    }, 300);
     return () => clearTimeout(debounce);
-  }, [newMemberName, open]); // Re-search from page 1 when name or dialog opens
-
-  const handleFocus = () => {
-    if (searchResults.length === 0) {
-      searchUsers(1);
-    }
-  };
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= (paginationData?.totalPages || 1)) {
-      searchUsers(newPage);
-    }
-  };
+  }, [newMemberName, open]);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -114,72 +99,60 @@ export function ProjectCreateDialog({ open, onOpenChange, onSuccess }: ProjectCr
   const handleAddMember = (user: any) => {
     if (members.find((m: any) => m._id === user._id)) return toast.warning("Đã có trong danh sách");
     const newMember = { 
-      ...user, 
-      name: `${user.lastname} ${user.firstname}`.trim() || user.email 
+      _id: user._id, 
+      name: `${user.lastname} ${user.firstname}`.trim() || user.email,
+      email: user.email,
+      avatar: user.avatar || '',
+      isLeader: members.length === 0 
     };
     setMembers([...members, newMember]);
     setNewMemberName('');
-    setSearchResults([]);
+    setIsSearchFocused(false); // Ẩn danh sách sau khi chọn
   };
 
   const removeMember = (id: string) => {
-    if (members.find(m => m._id === id)?.isOwner) return toast.error("Không thể xóa người quản lý dự án");
+    const memberToRemove = members.find(m => m._id === id);
+    if (memberToRemove?.isLeader && members.length > 1) {
+        return toast.error("Vui lòng chỉ định Leader mới trước khi xóa Leader hiện tại");
+    }
     setMembers(members.filter(m => m._id !== id));
+  };
+
+  const setAsLeader = (id: string) => {
+    setMembers(members.map(m => ({ ...m, isLeader: m._id === id })));
+    toast.success(`Đã chỉ định Leader mới`);
   };
 
   const handleSave = async () => {
     if (!projectName.trim()) return toast.error("Vui lòng nhập tên dự án");
     if (!projectKey.trim()) return toast.error("Vui lòng nhập mã Key");
-    if (!description.trim()) return toast.error("Vui lòng nhập mô tả dự án");
+    
+    const leader = members.find(m => m.isLeader);
+    if (!leader) return toast.error("Vui lòng chỉ định một Leader cho dự án");
 
     try {
       setIsLoading(true);
-      
       const payload = {
         title: projectName,
         key: projectKey,
         description: description,
-        members: members.map(m => m._id) // Send real IDs
+        manager: leader._id,
+        members: members.map(m => m._id)
       };
-
       await axios.post('/api/projects', payload);
-      
-      toast.success("Đã tạo dự án mới thành công!");
+      toast.success("Đã tạo dự án mới và bàn giao quyền Leader!");
       onOpenChange(false);
-      
-      // Reset form
-      setProjectName(''); 
-      setProjectKey(''); 
-      setDescription('');
-      setMembers([]);
-      
+      setProjectName(''); setProjectKey(''); setDescription(''); setMembers([]);
       if (onSuccess) onSuccess();
     } catch (error: any) {
-      console.error("Lỗi tạo dự án:", error);
-      const errorMsg = error.response?.data?.error || "Không thể tạo dự án, vui lòng thử lại";
-      toast.error(errorMsg);
+      toast.error(error.response?.data?.error || "Không thể tạo dự án");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // --- STYLE CLASSES THÔNG MINH (Light/Dark) ---
-
-  // Input: Nền trắng/đen, viền 2px, Focus màu Cam
-  const inputClass = cn(
-    "bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm",
-    "border border-slate-200 dark:border-slate-800",
-    "text-slate-900 dark:text-white",
-    "placeholder:text-slate-400",
-    "focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all duration-200 rounded-xl"
-  );
-
-  // Card: Nền xám nhạt/đen than, viền mảnh
-  const cardClass = cn(
-    "h-full shadow-sm rounded-2xl overflow-hidden",
-    "bg-white/60 dark:bg-slate-900/60 backdrop-blur-md",
-    "border border-slate-200 dark:border-slate-800"
-  );
+  // Lọc kết quả tìm kiếm (ẩn những người đã có trong dự án)
+  const filteredResults = searchResults.filter(u => !members.some(m => m._id === u._id));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -188,195 +161,122 @@ export function ProjectCreateDialog({ open, onOpenChange, onSuccess }: ProjectCr
         {/* HEADER */}
         <DialogHeader className="p-6 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shrink-0 flex-row items-center justify-between">
           <div>
-            <DialogTitle className="text-2xl font-extrabold text-slate-900 dark:text-white">Dự án mới</DialogTitle>
+            <DialogTitle className="text-2xl font-extrabold text-slate-900 dark:text-white">Khởi tạo Dự án</DialogTitle>
             <DialogDescription className="text-slate-500 dark:text-slate-400 text-xs mt-1 font-medium">
-              Khởi tạo không gian làm việc mới cho đội nhóm của bạn.
+              Thiết lập thông tin dự án và chỉ định người chịu trách nhiệm chính (Leader).
             </DialogDescription>
           </div>
           <DialogClose asChild>
-            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:text-white dark:hover:bg-white/10 rounded-full h-9 w-9">
+            <Button variant="ghost" size="icon" className="text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full">
               <X className="h-5 w-5" />
             </Button>
           </DialogClose>
         </DialogHeader>
 
         {/* BODY */}
-        <div className="flex-1 bg-white dark:bg-[#0a0a0a] p-6 pt-4 overflow-y-auto">
-          <div className="grid gap-6 lg:grid-cols-12 h-full">
-
-            {/* CỘT TRÁI: Thông tin chung */}
-            <div className="lg:col-span-8 h-full">
-              <Card className={cardClass}>
+        <div className="flex-1 p-6 pt-4 overflow-y-auto">
+          <div className="grid gap-6 lg:grid-cols-12">
+            
+            {/* THÔNG TIN CHUNG */}
+            <div className="lg:col-span-7">
+              <Card className="h-full shadow-sm rounded-2xl overflow-hidden bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200 dark:border-slate-800">
                 <CardHeader className="border-b border-zinc-200 dark:border-zinc-800 py-3 px-5">
-                  <CardTitle className="flex items-center gap-2 text-base text-zinc-900 dark:text-white">
-                    <div className="p-1.5 rounded-md bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
-                      <Briefcase className="h-4 w-4" />
-                    </div>
-                    Thông tin chung
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <Briefcase className="h-4 w-4 text-cyan-500" /> Thông tin cơ bản
                   </CardTitle>
                 </CardHeader>
-
-                <CardContent className="space-y-5 pt-5 px-5">
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+                <CardContent className="space-y-4 pt-5 px-5">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                     <div className="md:col-span-8 space-y-2">
-                      <Label className="text-zinc-500 dark:text-zinc-400 text-[10px] uppercase font-bold tracking-wider">
-                        Tên dự án <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        placeholder="Nhập tên dự án..."
-                        className={cn(inputClass, "h-10 text-sm px-3")}
-                        value={projectName}
-                        onChange={handleNameChange}
-                      />
+                      <Label className="text-[10px] font-bold uppercase text-slate-500">Tên dự án *</Label>
+                      <Input placeholder="Tên dự án..." className="bg-slate-50/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-cyan-500/20 focus-visible:border-cyan-500 transition-all rounded-xl h-10" value={projectName} onChange={handleNameChange} />
                     </div>
                     <div className="md:col-span-4 space-y-2">
-                      <Label className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5">
-                        <KeyRound className="h-3 w-3 text-primary" /> Mã Key
-                      </Label>
-                      <Input
-                        placeholder="KEY"
-                        className={cn(inputClass, "h-10 text-sm font-mono font-bold text-center text-indigo-600 dark:text-indigo-400 uppercase tracking-widest")}
-                        value={projectKey}
-                        onChange={(e) => setProjectKey(e.target.value.toUpperCase())}
-                        maxLength={6}
-                      />
+                      <Label className="text-[10px] font-bold uppercase text-slate-500">Mã Key *</Label>
+                      <Input placeholder="KEY" className="bg-slate-50/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-cyan-500/20 focus-visible:border-cyan-500 transition-all rounded-xl h-10 font-mono text-center uppercase" value={projectKey} onChange={(e) => setProjectKey(e.target.value.toUpperCase())} maxLength={6} />
                     </div>
                   </div>
-
                   <div className="space-y-2">
-                    <Label className="text-zinc-500 dark:text-zinc-400 text-[10px] uppercase font-bold tracking-wider">
-                      Mô tả chi tiết <span className="text-red-500">*</span>
-                    </Label>
-                    <Textarea
-                      placeholder="Mô tả mục tiêu, phạm vi dự án..."
-                      className={cn(inputClass, "min-h-[140px] resize-none text-sm p-3 leading-relaxed")}
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                    />
+                    <Label className="text-[10px] font-bold uppercase text-slate-500">Mô tả dự án</Label>
+                    <Textarea placeholder="Mô tả mục tiêu dự án..." className="bg-slate-50/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-cyan-500/20 focus-visible:border-cyan-500 transition-all rounded-xl min-h-[120px] resize-none" value={description} onChange={(e) => setDescription(e.target.value)} />
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* CỘT PHẢI: Thành viên */}
-            <div className="lg:col-span-4 h-full">
-              <Card className={cn(cardClass, "flex flex-col")}>
+            {/* THÀNH VIÊN & LEADER */}
+            <div className="lg:col-span-5">
+              <Card className="h-full shadow-sm rounded-2xl overflow-hidden bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200 dark:border-slate-800 flex flex-col">
                 <CardHeader className="border-b border-zinc-200 dark:border-zinc-800 py-3 px-5">
-                  <CardTitle className="flex items-center gap-2 text-base text-zinc-900 dark:text-white">
-                    <div className="p-1.5 rounded-md bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400">
-                      <Users className="h-4 w-4" />
-                    </div>
-                    Thành viên <span className="text-zinc-400 dark:text-zinc-500 text-xs ml-auto font-normal">({members.length})</span>
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <Users className="h-4 w-4 text-cyan-500" /> Quản lý nhân sự ({members.length})
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex-1 flex flex-col gap-3 pt-4 px-4 pb-4 overflow-hidden">
-
-                  <div className="flex gap-2 relative">
-                    <div className="relative flex-1">
-                      <UserPlus className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
-                      <Input
-                        placeholder="Thêm thành viên..."
-                        className={cn(inputClass, "pl-9 h-10 text-sm")}
-                        value={newMemberName}
-                        onChange={(e) => setNewMemberName(e.target.value)}
-                        onFocus={handleFocus}
-                      />
-
-                      {/* Search Results Dropdown */}
-                      {searchResults.length > 0 && (
-                        <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
-                          <div className="py-1 overflow-y-auto max-h-[250px] custom-scrollbar">
-                            {searchResults.map((user) => (
-                              <button
-                                key={user._id}
-                                onClick={() => handleAddMember(user)}
-                                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors text-left"
-                              >
-                                <Avatar className="h-6 w-6">
-                                  <AvatarImage src={user.avatar} />
-                                  <AvatarFallback className="bg-cyan-100 dark:bg-cyan-900/10 text-cyan-600 dark:text-cyan-400 text-[8px] font-bold uppercase">{user.lastname?.charAt(0).toUpperCase() || "?"}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-xs font-bold truncate">{user.lastname} {user.firstname}</span>
-                                  <span className="text-[10px] text-zinc-500 truncate">{user.email}</span>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-
-                          {/* Pagination Controls */}
-                          {paginationData && paginationData.totalPages > 1 && (
-                            <div className="px-2 py-2 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-black/20 flex items-center justify-between">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handlePageChange(currentPage - 1); }}
-                                disabled={currentPage === 1}
-                                className="h-7 px-2 text-[10px] gap-1 hover:bg-white dark:hover:bg-white/5"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>
-                                Trước
-                              </Button>
-                              <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">
-                                Trang {currentPage} / {paginationData.totalPages}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handlePageChange(currentPage + 1); }}
-                                disabled={currentPage === paginationData.totalPages}
-                                className="h-7 px-2 text-[10px] gap-1 hover:bg-white dark:hover:bg-white/5"
-                              >
-                                Sau
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg>
-                              </Button>
-                            </div>
-                          )}
+                <CardContent className="flex-1 flex flex-col gap-3 pt-4 px-4 pb-4">
+                  <div className="relative">
+                    <UserPlus className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <Input
+                      placeholder="Tìm và thêm thành viên..."
+                      className="bg-slate-50/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-cyan-500/20 focus-visible:border-cyan-500 transition-all rounded-xl pl-9 h-10"
+                      value={newMemberName}
+                      onChange={(e) => setNewMemberName(e.target.value)}
+                      onFocus={() => setIsSearchFocused(true)}
+                      onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)} // Delay để kịp click chọn
+                    />
+                    
+                    {/* CHỈ HIỂN THỊ KHI ĐANG FOCUS VÀ CÓ KẾT QUẢ */}
+                    {isSearchFocused && filteredResults.length > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl z-50 overflow-hidden">
+                        <div className="py-1 max-h-[200px] overflow-y-auto">
+                          {filteredResults.map((user) => (
+                            <button key={user._id} onClick={() => handleAddMember(user)} className="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-50 dark:hover:bg-white/5 text-left transition-colors">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={user.avatar} />
+                                <AvatarFallback className="text-[10px]">{user.lastname?.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-xs font-bold truncate">{user.lastname} {user.firstname}</span>
+                                <span className="text-[10px] text-slate-500 truncate">{user.email}</span>
+                              </div>
+                            </button>
+                          ))}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 overflow-hidden relative min-h-[150px]">
-                    <div className="absolute inset-0 overflow-y-auto custom-scrollbar">
+                  <div className="flex-1 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-white/40 dark:bg-black/20 min-h-[200px]">
+                    <div className="h-full overflow-y-auto custom-scrollbar">
                       <Table>
-                        <TableHeader className="bg-zinc-100 dark:bg-white/5 sticky top-0 z-10 backdrop-blur-md">
-                          <TableRow className="border-zinc-200 dark:border-white/5 hover:bg-transparent h-8">
-                            <TableHead className="text-zinc-500 dark:text-zinc-400 text-[10px] uppercase font-bold pl-3 h-8">Thành viên</TableHead>
-                            <TableHead className="w-8 h-8"></TableHead>
-                          </TableRow>
-                        </TableHeader>
                         <TableBody>
                           {members.map((m) => (
-                            <TableRow key={m._id} className="border-zinc-100 dark:border-white/5 hover:bg-zinc-50 dark:hover:bg-white/5 group h-12 transition-colors">
-                              <TableCell className="py-1.5 pl-3">
+                            <TableRow key={m._id} className="border-slate-100 dark:border-white/5 hover:bg-slate-50/50 dark:hover:bg-white/5 group">
+                              <TableCell className="py-2 pl-3">
                                 <div className="flex items-center gap-3">
-                                  <Avatar className="h-7 w-7 border border-zinc-200 dark:border-white/10">
+                                  <Avatar className="h-8 w-8 ring-2 ring-white dark:ring-slate-800">
                                     <AvatarImage src={m.avatar} />
-                                    <AvatarFallback className="bg-cyan-100 dark:bg-cyan-900/10 text-cyan-600 dark:text-cyan-400 text-[10px] font-bold uppercase">
-                                      {m.name ? m.name.charAt(0).toUpperCase() : "?"}
-                                    </AvatarFallback>
+                                    <AvatarFallback className="text-[10px] font-bold">{m.name.charAt(0)}</AvatarFallback>
                                   </Avatar>
-                                  <div className="overflow-hidden">
-                                    <div className="flex items-center gap-2">
-                                      <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 truncate leading-none">{m.name}</p>
-                                      {m.isOwner && <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400 font-extrabold uppercase tracking-wider">Leader</span>}
-                                    </div>
-                                    <p className="text-[10px] text-zinc-500 dark:text-zinc-500 truncate leading-tight mt-1">{m.email}</p>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-xs font-bold flex items-center gap-1.5 truncate">
+                                      {m.name}
+                                      {m.isLeader && <Crown className="h-3 w-3 text-amber-500 fill-amber-500" />}
+                                    </span>
+                                    <span className="text-[9px] text-slate-500 truncate">{m.email}</span>
                                   </div>
                                 </div>
                               </TableCell>
-                              <TableCell className="pr-2 text-right">
-                                {!m.isOwner && (
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    onClick={() => removeMember(m._id)}
-                                    className="h-8 w-8 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all rounded-lg"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
+                              <TableCell className="pr-2 text-right space-x-1">
+                                {!m.isLeader ? (
+                                  <Button variant="ghost" size="icon" onClick={() => setAsLeader(m._id)} title="Chỉ định làm Leader" className="h-8 w-8 text-slate-400 hover:text-amber-500">
+                                    <ShieldCheck className="h-4 w-4" />
                                   </Button>
+                                ) : (
+                                  <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border-none text-[8px] font-extrabold uppercase">Leader</Badge>
                                 )}
+                                <Button variant="ghost" size="icon" onClick={() => removeMember(m._id)} className="h-8 w-8 text-slate-400 hover:text-red-500">
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -387,29 +287,16 @@ export function ProjectCreateDialog({ open, onOpenChange, onSuccess }: ProjectCr
                 </CardContent>
               </Card>
             </div>
-
           </div>
         </div>
 
         {/* FOOTER */}
-        <div className="p-4 bg-white dark:bg-[#0a0a0a] border-t border-zinc-200 dark:border-zinc-800 flex justify-end gap-3 shrink-0">
-          <Button
-            variant="ghost"
-            onClick={() => onOpenChange(false)}
-            className="h-10 px-6 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-white/10 text-sm font-medium"
-          >
-            Hủy bỏ
-          </Button>
-
-          <Button
-            onClick={handleSave}
-            disabled={isLoading}
-            className="h-11 px-10 bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 text-white shadow-lg shadow-cyan-500/20 font-bold text-sm border-0 rounded-xl transition-all hover:scale-105 active:scale-95"
-          >
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4 mr-2" /> Lưu Dự Án</>}
+        <div className="p-4 bg-slate-50/50 dark:bg-black/20 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="h-10 px-6 font-bold text-slate-500">Hủy bỏ</Button>
+          <Button onClick={handleSave} disabled={isLoading} className="h-11 px-10 bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/20">
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4 mr-2" /> Lưu & Bàn giao</>}
           </Button>
         </div>
-
       </DialogContent>
     </Dialog>
   );
