@@ -10,7 +10,6 @@ import { ThemeProvider } from '@/components/theme-provider';
 import LangLayout from '@/app/lang';
 import { UserProvider } from '@/context/user-context';
 
-export const dynamic = 'force-dynamic';
 
 const inter = Inter({
   variable: '--font-inter',

@@ -282,3 +282,38 @@ export const updateWorkItem = async (projectId: string, body: any, userId?: stri
         status: toFrontendStatus(obj.status),
     };
 };
+
+export const getOverdueWorkItems = async (userId: string) => {
+    await connectToDatabase();
+    const now = new Date();
+    
+    const tasks = await WorkItem.find({
+        assignee: userId,
+        status: { $nin: ['Done', 'Cancel'] },
+        dueDate: { $lt: now }
+    })
+    .populate('project', 'title key')
+    .sort({ dueDate: 1 });
+
+    return tasks.map(t => t.toObject());
+};
+
+export const getTodayStats = async (userId: string) => {
+    await connectToDatabase();
+    
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const tasks = await WorkItem.find({
+        assignee: userId,
+        dueDate: { $gte: startOfDay, $lte: endOfDay }
+    });
+
+    const total = tasks.length;
+    const completed = tasks.filter(t => t.status === 'Done').length;
+
+    return { total, completed };
+};
