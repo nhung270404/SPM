@@ -1,68 +1,38 @@
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { z } from 'zod';
 import User from '@/models/user.model';
 import '@/lib/mongo';
-import { sendResetEmail } from '@/lib/mail';
 
 const forgotPasswordSchema = z.object({
-  email: z
-    .string({
-      required_error: 'Email là bắt buộc',
-      invalid_type_error: 'Email không hợp lệ',
-    })
-    .email('Email không đúng định dạng')
-    .transform(v => v.trim().toLowerCase()),
+  email: z.string().email('Email không đúng định dạng').transform(v => v.trim().toLowerCase()),
+  phone: z.string().min(10, 'Số điện thoại không hợp lệ'),
+  newPassword: z.string().min(6, 'Mật khẩu mới phải từ 6 ký tự'),
 });
 
-type ForgotPasswordBody = z.infer<typeof forgotPasswordSchema>;
-
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<Record<string, never>> }
-) {
-  await params;
-
+export async function POST(req: Request) {
   try {
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
+    const body = await req.json();
+    const { email, phone, newPassword } = forgotPasswordSchema.parse(body);
+
+    // Tìm user khớp cả Email và Số điện thoại
+    const user = await User.findOne({ email, phone });
+
+    if (!user) {
       return NextResponse.json(
-        { message: 'Invalid JSON body' },
+        { message: 'Thông tin Email hoặc Số điện thoại không chính xác' },
         { status: 400 }
       );
     }
 
-    const { email }: ForgotPasswordBody =
-      forgotPasswordSchema.parse(body);
-
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return NextResponse.json({ success: true });
-    }
-
-    const resetToken = crypto.randomBytes(32).toString('hex');
-
-    const hashedToken = crypto
-      .createHash('sha256')
-      .update(resetToken)
-      .digest('hex');
-
-    user.resetPasswordToken = hashedToken;
-    user.resetPasswordExpires = new Date(
-      Date.now() + 15 * 60 * 1000
-    );
-
+    // Cập nhật mật khẩu mới trực tiếp
+    await user.setPassword(newPassword);
     await user.save();
 
-    const resetUrl =
-      `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${resetToken}`;
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Mật khẩu đã được đặt lại thành công!' 
+    });
 
-    await sendResetEmail(user.email, resetUrl);
-
-    return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -70,11 +40,10 @@ export async function POST(
         { status: 400 }
       );
     }
-
     console.error('FORGOT PASSWORD ERROR:', error);
     return NextResponse.json(
-      { message: 'Internal Server Error' },
+      { message: 'Lỗi hệ thống, vui lòng thử lại sau' },
       { status: 500 }
     );
   }
-}
+}

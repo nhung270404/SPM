@@ -157,25 +157,7 @@ export const updateWorkItem = async (projectId: string, body: any, userId?: stri
         throw new Error('Task not found');
     }
 
-    // Time Tracking Logic
-    if (updateData.status && updateData.status !== existingTask.status) {
-        const newStatus = updateData.status;
 
-        if (newStatus === 'In Progress') {
-            // Chỉ ghi nhận lần đầu tiên hoặc nếu chưa có
-            if (!existingTask.actualStartDate) {
-                updateData.actualStartDate = new Date();
-            }
-        }
-
-        if (newStatus === 'Done') {
-            updateData.actualEndDate = new Date();
-            const start = existingTask.actualStartDate || new Date();
-            const end = updateData.actualEndDate;
-            const diffMs = end.getTime() - start.getTime();
-            updateData.timeLogged = Math.max(0, Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100);
-        }
-    }
 
     const startDate = updateData.startDate ? new Date(updateData.startDate) : existingTask.startDate;
     const dueDate = updateData.dueDate ? new Date(updateData.dueDate) : existingTask.dueDate;
@@ -298,22 +280,88 @@ export const getOverdueWorkItems = async (userId: string) => {
     return tasks.map(t => t.toObject());
 };
 
-export const getTodayStats = async (userId: string) => {
+export const getGamificationStats = async (userId: string) => {
     await connectToDatabase();
-    
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
 
-    const tasks = await WorkItem.find({
-        assignee: userId,
-        dueDate: { $gte: startOfDay, $lte: endOfDay }
+    // 1. Lấy danh sách các ngày có hoạt động (đại diện cho ngày đăng nhập)
+    const workItemsWithActivity = await WorkItem.find({
+        'activities.user': userId
+    }).select('activities');
+
+    const activityDates = new Set<string>();
+    
+    // Thêm ngày hôm nay (vì đang truy cập dashboard là có đăng nhập)
+    const today = new Date();
+    if (today.getDay() !== 0) { // 0 là Chủ nhật
+        activityDates.add(today.toDateString());
+    }
+
+    workItemsWithActivity.forEach(item => {
+        item.activities.forEach(act => {
+            if (act.user.toString() === userId) {
+                const date = new Date(act.timestamp);
+                if (date.getDay() !== 0) { // Không tính chủ nhật
+                    activityDates.add(date.toDateString());
+                }
+            }
+        });
     });
 
-    const total = tasks.length;
-    const completed = tasks.filter(t => t.status === 'Done').length;
+    // 2. Tính XP: 10 XP mỗi ngày đăng nhập (không tính CN)
+    const loginDaysCount = activityDates.size;
+    const totalXP = loginDaysCount * 10;
+    
+    const level = Math.floor(totalXP / 500) + 1; // 500 XP mỗi level cho nhẹ nhàng
+    const currentLevelXP = totalXP % 500;
+    const nextLevelXP = 500;
 
-    return { total, completed };
+    // 3. Tính Streak (Số ngày liên tục)
+    let streak = 0;
+    let checkDate = new Date();
+    checkDate.setHours(0,0,0,0);
+
+    while (activityDates.has(checkDate.toDateString()) || checkDate.getDay() === 0) {
+        if (activityDates.has(checkDate.toDateString())) {
+            streak++;
+        }
+        checkDate.setDate(checkDate.getDate() - 1);
+        if (streak > 30) break; // Giới hạn cho an toàn
+    }
+
+    // 4. Tính Rank (Dựa trên XP mới)
+    const allUsers = await User.find().select('_id');
+    const userXPMap = await Promise.all(allUsers.map(async (u) => {
+        // Tạm thời giả lập logic tương tự cho các user khác để có bảng xếp hạng
+        const userActivities = await WorkItem.countDocuments({ 'activities.user': u._id });
+        return { userId: u._id.toString(), xp: userActivities * 10 };
+    }));
+    
+    const sortedUsers = userXPMap.sort((a, b) => b.xp - a.xp);
+    const rank = sortedUsers.findIndex(u => u.userId === userId) + 1;
+
+    // 4. Tính trạng thái các ngày trong tuần hiện tại (để hiển thị dot đúng ngày)
+    const activeDays = [false, false, false, false, false, false, false];
+    const curr = new Date();
+    const first = curr.getDate() - (curr.getDay() === 0 ? 6 : curr.getDay() - 1); // Ngày thứ 2 đầu tuần
+
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(curr.setDate(first + i));
+        if (activityDates.has(d.toDateString())) {
+            activeDays[i] = true;
+        }
+    }
+
+    const levelTitles = ['Tân binh', 'Thành viên năng nổ', 'Chiến binh', 'Bậc thầy', 'Huyền thoại'];
+    const levelTitle = levelTitles[Math.min(level - 1, levelTitles.length - 1)];
+
+    return {
+        xp: currentLevelXP,
+        totalXp: totalXP,
+        nextLevelXp: nextLevelXP,
+        level: level,
+        levelTitle: levelTitle,
+        streak: streak || 1,
+        rank: rank || 1,
+        activeDays: activeDays // Trả về mảng 7 ngày [T2, T3, ..., CN]
+    };
 };

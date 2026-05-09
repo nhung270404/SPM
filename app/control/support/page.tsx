@@ -17,16 +17,42 @@ const INITIAL_MESSAGES: Message[] = [
 ];
 
 export default function SupportPage() {
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // 1. Load lịch sử từ DATABASE khi vào trang
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const res = await fetch('/api/chat');
+        const json = await res.json();
+        if (json.success && json.data && json.data.length > 0) {
+          // Chuyển string timestamp ngược lại thành Date object
+          const formatted = json.data.map((m: any) => ({
+            id: m._id,
+            content: m.content,
+            sender: m.sender,
+            timestamp: new Date(m.timestamp)
+          }));
+          setMessages(formatted);
+        } else {
+          setMessages(INITIAL_MESSAGES);
+        }
+      } catch (e) {
+        console.error("Lỗi khi load lịch sử chat từ DB:", e);
+        setMessages(INITIAL_MESSAGES);
+      }
+    };
+    fetchHistory();
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const handleSendMessage = async (content: string) => {
     const userMessage: Message = {
@@ -53,7 +79,7 @@ export default function SupportPage() {
       const json = await res.json();
 
       const botResponse: Message = {
-        id: (Date.now() + 1).toString(),
+        id: json.data?._id || (Date.now() + 1).toString(),
         content:
             json.reply ||
             json.message ||
@@ -79,10 +105,16 @@ export default function SupportPage() {
 
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-48px)] bg-white dark:bg-slate-950">
-      <div className="flex-1 flex flex-col min-h-0 relative">
-        <ChatHeader />
+      <ChatHeader />
+      
+      {/* Khu vực tin nhắn có thanh cuộn riêng */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <ChatMessages messages={messages} />
         <div ref={messagesEndRef} />
+      </div>
+
+      {/* Thanh nhập liệu được GHIM CHẶT ở dưới cùng màn hình */}
+      <div className="sticky bottom-0 border-t p-4 bg-white dark:bg-slate-950 z-10">
         <ChatInput onSendMessage={handleSendMessage} />
       </div>
     </div>

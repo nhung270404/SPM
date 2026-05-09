@@ -17,40 +17,54 @@ export function ForgotPasswordForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-  // [MỚI] State để lưu lỗi hiển thị lên màn hình
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // [MỚI] Kiểm tra rỗng thủ công thay vì dùng validation mặc định của trình duyệt
-    if (!email.trim()) {
-      setError("Vui lòng nhập địa chỉ email của bạn.");
+    if (!email.trim() || !phone.trim() || !newPassword.trim()) {
+      setError("Vui lòng điền đầy đủ các thông tin.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError("Mật khẩu xác nhận không khớp.");
       return;
     }
 
     setLoading(true);
 
     try {
-      // Gọi API gửi mail
-      await POST_METHOD('/api/forgot-password', { email });
+      const res: any = await POST_METHOD('/api/forgot-password', { 
+        email, 
+        phone, 
+        newPassword 
+      });
 
-      toast.success("Đã gửi link đổi mật khẩu! Vui lòng kiểm tra Email.", { position: 'top-center' });
+      if (res.message) {
+         toast.success(res.message, { position: 'top-center' });
+      } else {
+         toast.success("Mật khẩu đã được đặt lại thành công!", { position: 'top-center' });
+      }
 
-      // Chờ 2s rồi quay về Login
       setTimeout(() => {
         router.push('/login');
       }, 2000);
 
     } catch (err: any) {
-      console.error(err);
-
-      // [QUAN TRỌNG] Hiển thị thông báo lỗi chuyên nghiệp tại đây
-      // (Giả lập lỗi Email không tồn tại để hiện UI)
-      setError("Địa chỉ Email này không tồn tại trong hệ thống.");
-
+      // Lấy thông báo lỗi cụ thể từ Server (nếu có)
+      const serverMessage = err.response?.data?.message || err.message;
+      
+      if (serverMessage.includes('400') || serverMessage.includes('không chính xác')) {
+        setError("Thông tin Email hoặc Số điện thoại không chính xác. Vui lòng kiểm tra lại.");
+      } else {
+        setError(serverMessage || "Có lỗi xảy ra, vui lòng thử lại.");
+      }
     } finally {
       setLoading(false);
     }
@@ -58,66 +72,87 @@ export function ForgotPasswordForm() {
 
   return (
     <Card className="border border-white/20 dark:border-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-2xl overflow-hidden rounded-2xl w-full border-t-4 border-t-[#36caf1] animate-in fade-in zoom-in duration-500">
-      <CardHeader className="text-center pb-8 pt-8 space-y-2">
+      <CardHeader className="text-center pb-6 pt-8 space-y-2">
         <div className="flex justify-center mb-2">
            <div className="p-3 rounded-2xl bg-cyan-50 dark:bg-cyan-900/20 text-[#36caf1]">
               <Mail className="h-8 w-8" />
            </div>
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-          Khôi phục tài khoản
+          Khôi phục mật khẩu
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 px-6">
-          Nhập email của bạn và chúng tôi sẽ giúp bạn lấy lại quyền truy cập.
+          Xác thực danh tính bằng Email và Số điện thoại để đặt lại mật khẩu.
         </p>
       </CardHeader>
 
       <CardContent className="px-8 pb-10">
-        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
 
-          <div className="space-y-2.5">
-            <Label htmlFor="email" className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">
-              Địa chỉ Email
-            </Label>
-            <div className="relative group">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-[#36caf1] transition-colors" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-[12px] font-bold text-slate-500 uppercase ml-1">Email</Label>
               <Input
-                id="email"
                 type="email"
-                placeholder="name@company.com"
-                className={cn(
-                  "pl-12 h-14 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50",
-                  "text-slate-900 dark:text-white placeholder:text-slate-400",
-                  "focus:border-[#36caf1] focus:ring-4 focus:ring-[#36caf1]/10 transition-all text-base",
-                  error && "border-red-500 focus:border-red-500 focus:ring-red-500/10"
-                )}
+                placeholder="email@example.com"
+                className="h-12 rounded-xl bg-slate-50/50 dark:bg-slate-950/50"
                 value={email}
-                onChange={e => {
-                  setEmail(e.target.value);
-                  setError('');
-                }}
+                onChange={e => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[12px] font-bold text-slate-500 uppercase ml-1">Số điện thoại</Label>
+              <Input
+                type="text"
+                placeholder="09xxx..."
+                className="h-12 rounded-xl bg-slate-50/50 dark:bg-slate-950/50"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="space-y-2">
+              <Label className="text-[12px] font-bold text-slate-500 uppercase ml-1">Mật khẩu mới</Label>
+              <Input
+                type="password"
+                placeholder="••••••••"
+                className="h-12 rounded-xl bg-slate-50/50 dark:bg-slate-950/50"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[12px] font-bold text-slate-500 uppercase ml-1">Xác nhận mật khẩu</Label>
+              <Input
+                type="password"
+                placeholder="••••••••"
+                className="h-12 rounded-xl bg-slate-50/50 dark:bg-slate-950/50"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
               />
             </div>
           </div>
 
           {error && (
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm font-semibold animate-in slide-in-from-top-2 duration-300">
-              <AlertCircle className="h-5 w-5 shrink-0" />
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-[13px] font-semibold">
+              <AlertCircle className="h-4 w-4 shrink-0" />
               {error}
             </div>
           )}
 
           <Button
             type="submit"
-            className="w-full h-14 bg-gradient-to-r from-[#36caf1] to-[#03bdd8] hover:opacity-90 text-white font-bold text-base rounded-xl shadow-lg shadow-cyan-500/20 transition-all active:scale-[0.98] border-none"
+            className="w-full h-13 bg-gradient-to-r from-[#36caf1] to-[#03bdd8] hover:opacity-90 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/20 transition-all active:scale-[0.98] border-none mt-2"
             disabled={loading}
           >
-            {loading ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <span className="flex items-center gap-2 uppercase tracking-wider">Gửi yêu cầu <Send className="h-5 w-5" /></span>}
+            {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "ĐẶT LẠI MẬT KHẨU"}
           </Button>
 
           <div className="text-center pt-2">
-            <Link href="/login" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-[#36caf1] dark:hover:text-cyan-400 transition-colors font-bold group">
-              <ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-1" /> Quay lại đăng nhập
+            <Link href="/login" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-[#36caf1] font-bold group">
+              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" /> Quay lại đăng nhập
             </Link>
           </div>
 
@@ -125,4 +160,4 @@ export function ForgotPasswordForm() {
       </CardContent>
     </Card>
   );
-}
+}
