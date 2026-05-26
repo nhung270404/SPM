@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { WorkItemsView } from '@/components/control/projects/workitems/work-items-view';
 
 // Với Next.js 15, params là một Promise
@@ -11,5 +11,9 @@ export default async function WorkItemsPage({ params }: Props) {
   const { id } = await params;
 
   // Gọi component View và truyền ID vào
-  return <WorkItemsView projectId={id} />;
+  return (
+    <Suspense fallback={<div>Loading board...</div>}>
+      <WorkItemsView projectId={id} />
+    </Suspense>
+  );
 }

@@ -6,11 +6,22 @@ import {IUser} from "@/models/user.model";
 import {IMenuSideBar} from "@/models/menu-sidebar.model";
 import {ReactNode} from 'react';
 
+import { useUser, toFrontendUser } from '@/context/user-context';
+import { useEffect } from 'react';
+
 export default function LangLandingLayout({children, payload, menu}: {
 	children: ReactNode,
 	payload: IUser,
 	menu: IMenuSideBar
 }) {
+	const { user, setUser } = useUser();
+
+	useEffect(() => {
+		if (payload && !user) {
+			setUser(toFrontendUser(payload));
+		}
+	}, [payload, user, setUser]);
+
 	return (
 		<SidebarProvider className="flex flex-col">
 			<div className="flex flex-1">

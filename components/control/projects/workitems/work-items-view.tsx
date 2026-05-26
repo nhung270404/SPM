@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Loader2, ArrowLeft, ShieldAlert } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -90,12 +91,24 @@ export function WorkItemsView({ projectId: _projectId }: { projectId: string }) 
     }
   };
 
+  const searchParams = useSearchParams();
+  const taskIdParam = searchParams.get('taskId');
+
   useEffect(() => {
     if (_projectId) {
       fetchProject();
       fetchTasks();
     }
   }, [_projectId]);
+
+  useEffect(() => {
+    if (taskIdParam && tasks.length > 0) {
+      const task = tasks.find(t => t._id === taskIdParam);
+      if (task) {
+        setSelectedTask(task);
+      }
+    }
+  }, [taskIdParam, tasks]);
 
   const handleDragEnd = async (result: any) => {
     const { destination, source, draggableId } = result;

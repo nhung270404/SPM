@@ -8,6 +8,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
+import Link from 'next/link';
 
 export function OverdueAlertsWidget() {
     const [overdueTasks, setOverdueTasks] = useState<any[]>([]);
@@ -90,9 +91,11 @@ export function OverdueAlertsWidget() {
                     <div className="p-4 max-h-[350px] overflow-y-auto custom-scrollbar">
                         <div className="space-y-3">
                             {overdueTasks.map((task) => (
-                                <div 
+                                <Link 
                                     key={task._id}
-                                    className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-rose-300 transition-colors"
+                                    href={`/control/projects/${task.project?._id || task.project}/workitems?taskId=${task._id}`}
+                                    className="block p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-rose-300 transition-colors"
+                                    onClick={() => setIsOpen(false)}
                                 >
                                     <div className="flex flex-col gap-1.5">
                                         <div className="flex items-center gap-1.5">
@@ -110,7 +113,7 @@ export function OverdueAlertsWidget() {
                                             </span>
                                         </div>
                                     </div>
-                                </div>
+                                </Link>
                             ))}
                         </div>
                     </div>

@@ -38,14 +38,14 @@ interface Project {
   dueDate: string;
 }
 
-export function ProjectListView() {
+export function ProjectListView({ initialData }: { initialData?: Project[] }) {
   const { user: currentUser } = useUser();
   const isAdmin = currentUser?.roles?.some((r: any) => r.level <= 1) || false;
 
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<Project[]>(initialData || []);
+  const [filteredProjects, setFilteredProjects] = useState<Project[]>(initialData || []);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!initialData);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -75,10 +75,10 @@ export function ProjectListView() {
   };
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && projects.length === 0) {
         fetchProjects();
     }
-  }, [currentUser]);
+  }, [currentUser, projects.length]);
 
   // Xử lý tìm kiếm
   useEffect(() => {

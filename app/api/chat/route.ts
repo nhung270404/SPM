@@ -48,13 +48,14 @@ export async function POST(req: NextRequest, context: any) {
             });
 
             const projectMatch = projectId && projectId !== "all" ? { project: projectId } : {};
+            const userMatch = { ...projectMatch, assignee: userId };
 
             const [projects, overdueTasks, dueSoonTasks, totalTasks, completedTasks] = await Promise.all([
                 Project.find().select("title key").lean(),
-                WorkItem.find({ ...projectMatch, status: { $nin: ["Done", "Completed", "Cancel"] }, dueDate: { $lt: new Date() } }).select("title status priority dueDate").limit(10).lean(),
-                WorkItem.find({ ...projectMatch, status: { $nin: ["Done", "Completed", "Cancel"] }, dueDate: { $gte: new Date(), $lte: new Date(Date.now() + 48 * 60 * 60 * 1000) } }).select("title status priority dueDate").limit(10).lean(),
-                WorkItem.countDocuments(projectMatch),
-                WorkItem.countDocuments({ ...projectMatch, status: { $in: ["Done", "Completed"] } }),
+                WorkItem.find({ ...userMatch, status: { $nin: ["Done", "Cancel"] }, dueDate: { $lt: new Date() } }).select("title status priority dueDate").limit(10).lean(),
+                WorkItem.find({ ...userMatch, status: { $nin: ["Done", "Cancel"] }, dueDate: { $gte: new Date(), $lte: new Date(Date.now() + 48 * 60 * 60 * 1000) } }).select("title status priority dueDate").limit(10).lean(),
+                WorkItem.countDocuments(userMatch),
+                WorkItem.countDocuments({ ...userMatch, status: { $in: ["Done"] } }),
             ]);
 
             const prompt = `Bạn là một người bạn trẻ, nói chuyện cực kỳ tự nhiên và "tỉnh". Bạn trò chuyện như đang nhắn tin Messenger, không dài dòng, không diễn.

@@ -50,7 +50,7 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
       }
     };
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 2000); // Cập nhật cực nhanh mỗi 2s
+    const interval = setInterval(fetchUnreadCount, 10000); // Cập nhật mỗi 10s để giảm tải cho server
     return () => clearInterval(interval);
   }, []);
 

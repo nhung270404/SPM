@@ -29,7 +29,7 @@ type UserContextType = {
 
 const UserContext = createContext<UserContextType | null>(null);
 
-function toFrontendUser(raw: any): FrontendUser {
+export function toFrontendUser(raw: any): FrontendUser {
   const u = raw?.data ?? raw;
 
   return {

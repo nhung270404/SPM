@@ -11,11 +11,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { useUser } from '@/context/user-context';
 import { toast } from 'sonner';
 
 export function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { refreshUser } = useUser();
 
     const [loading, setLoading] = useState(false);
     const [showPass, setShowPass] = useState(false);
@@ -41,6 +43,7 @@ export function LoginForm() {
 
         try {
             await POST_METHOD('/api/login', formData);
+            await refreshUser();
             toast.success("Đăng nhập thành công!", { position: 'top-center' });
             router.push(searchParams.get('redirect') || '/control');
         } catch (err: any) {

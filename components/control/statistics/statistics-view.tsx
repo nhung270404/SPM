@@ -164,9 +164,9 @@ export function StatisticsView() {
           <StatsCards summary={data.summary} />
 
           {/* 2. MAIN CHARTS SECTION */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* MEMBER PROGRESS (TIẾN ĐỘ THÀNH VIÊN) */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-1">
               <MemberLeaderboard members={data.memberLeaderboard} />
             </div>
 
