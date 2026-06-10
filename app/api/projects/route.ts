@@ -35,13 +35,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest, context: any) {
   return withApiHandler(req, context, async (req, user, userId) => {
-    // CHẶN: Chỉ Admin mới được tạo dự án
-    if (!isAdmin(user)) {
-        return NextResponse.json(
-          { error: "Bạn không có quyền tạo dự án. Chỉ Quản trị viên mới thực hiện được hành động này." },
-          { status: 403 }
-        );
-    }
+    // Bỏ chặn: Bất kỳ ai cũng có quyền tạo dự án
+    // if (!isAdmin(user)) { ... }
 
     try {
       const { title, description, key, manager: bodyManager, members: bodyMembers } = await req.json();

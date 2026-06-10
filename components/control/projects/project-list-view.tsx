@@ -38,12 +38,25 @@ interface Project {
   dueDate: string;
 }
 
+const mapProjects = (data: any[]) => data.map((p: any) => ({
+  ...p,
+  members: (p.members || []).map((m: any) => {
+    const lastName = m.lastname || '';
+    const firstName = m.firstname || '';
+    const fullName = `${lastName} ${firstName}`.trim();
+    return {
+      ...m,
+      name: fullName || m.email || "Unknown"
+    };
+  })
+}));
+
 export function ProjectListView({ initialData }: { initialData?: Project[] }) {
   const { user: currentUser } = useUser();
   const isAdmin = currentUser?.roles?.some((r: any) => r.level <= 1) || false;
 
-  const [projects, setProjects] = useState<Project[]>(initialData || []);
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>(initialData || []);
+  const [projects, setProjects] = useState<Project[]>(initialData ? mapProjects(initialData) : []);
+  const [filteredProjects, setFilteredProjects] = useState<Project[]>(initialData ? mapProjects(initialData) : []);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(!initialData);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -55,13 +68,7 @@ export function ProjectListView({ initialData }: { initialData?: Project[] }) {
     try {
       if (showLoading) setIsLoading(true);
       const response = await axios.get('/api/projects');
-      const mappedData = response.data.map((p: any) => ({
-        ...p,
-        members: (p.members || []).map((m: any) => ({
-          ...m,
-          name: `${m.lastname} ${m.firstname}`.trim() || m.email || "Unknown"
-        }))
-      }));
+      const mappedData = mapProjects(response.data);
 
       // KHÔNG LỌC DỰ ÁN NỮA - Cho phép nhìn thấy tất cả
       setProjects(mappedData);
@@ -166,14 +173,13 @@ export function ProjectListView({ initialData }: { initialData?: Project[] }) {
               <RefreshCcw className={cn("h-5 w-5", isRefreshing && "animate-spin text-cyan-500")} />
             </Button>
 
-            {isAdmin && (
-              <Button
-                onClick={() => setIsCreateOpen(true)}
-                className="gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 text-white font-bold shadow-lg shadow-cyan-500/30 border-0 h-12 px-8 rounded-2xl transition-all"
-              >
-                <Plus className="h-5 w-5" /> Tạo dự án
-              </Button>
-            )}
+            {/* Bỏ điều kiện isAdmin, ai cũng được thấy nút Tạo dự án */}
+            <Button
+              onClick={() => setIsCreateOpen(true)}
+              className="gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 text-white font-bold shadow-lg shadow-cyan-500/30 border-0 h-12 px-8 rounded-2xl transition-all"
+            >
+              <Plus className="h-5 w-5" /> Tạo dự án
+            </Button>
           </div>
         </div>
       </div>
@@ -261,7 +267,8 @@ export function ProjectListView({ initialData }: { initialData?: Project[] }) {
             );
           })}
 
-          {!isLoading && isAdmin && !searchQuery && (
+          {/* Bỏ điều kiện isAdmin, hiển thị Card Tạo dự án cho tất cả mọi người */}
+          {!isLoading && !searchQuery && (
             <div
               onClick={() => setIsCreateOpen(true)}
               className="group h-full min-h-[220px] cursor-pointer"

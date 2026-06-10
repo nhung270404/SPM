@@ -104,27 +104,7 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
       className="h-svh border-r-0 transition-all duration-300 ease-in-out" 
       {...props}
     >
-      <SidebarHeader className={cn("transition-all duration-300", isCollapsed ? "px-0 py-4" : "p-4")}>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton 
-              size="lg" 
-              className={cn(
-                "transition-all duration-300 rounded-xl h-12 flex items-center",
-                isCollapsed ? "justify-center p-0" : "hover:bg-white/10 px-3"
-              )} 
-              asChild 
-              tooltip={config.title}
-            >
-              <Link href="/control">
-                <div className="bg-white text-sidebar flex aspect-square size-10 items-center justify-center rounded-xl flex-shrink-0 shadow-md overflow-hidden">
-                  <img src="/logo.png" alt="ZenWork Logo" className="size-full object-contain p-1.5" />
-                </div>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
+
 
       <SidebarContent className="flex flex-col h-full p-0 gap-2 overflow-y-auto no-scrollbar">
         <div className={cn(

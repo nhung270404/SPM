@@ -47,8 +47,10 @@ export function DeadlineRiskPanel({ metrics }: { metrics: RiskMetrics }) {
                     <span className={getRiskColor(metrics.delayRisk)}>{metrics.delayRisk > 30 ? 'HIGH RISK' : 'STABLE STATUS'}</span>
                  </div>
                   <div className="p-3 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/10">
-                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
-                      "{metrics.aiInsight || 'Đang phân tích dữ liệu...'}"
+                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic whitespace-pre-line">
+                      "{metrics.aiInsight 
+                        ? metrics.aiInsight.replace(/\s*Nguyên nhân:/gi, '\n\nNguyên nhân:').replace(/\s*Hành động:/gi, '\n\nHành động:') 
+                        : 'Đang phân tích dữ liệu...'}"
                     </p>
                   </div>
                  <Progress 

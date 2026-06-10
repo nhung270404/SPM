@@ -114,12 +114,8 @@ export function WorkItemsBoard({
                                         <div className="flex flex-col gap-3 min-h-full pb-10">
                                             {getTasksByStatus(col.id).length > 0 ? (
                                                 getTasksByStatus(col.id).map((task, index) => {
-                                                    // Kiểm tra quyền riêng cho từng task: Leader HOẶC người được giao
-                                                    const isAssignee = task.assignee && (
-                                                        (typeof task.assignee === 'object' && task.assignee._id === currentUserId) ||
-                                                        (task.assignee === currentUserId)
-                                                    );
-                                                    const canChangeStatus = canManageWork || isAssignee;
+                                                    // Bỏ giới hạn phân quyền: Bất kỳ ai cũng có thể kéo thả (đổi trạng thái)
+                                                    const canChangeStatus = true;
 
                                                     return (
                                                         <Draggable key={task._id} draggableId={task._id} index={index} isDragDisabled={!canChangeStatus}>
