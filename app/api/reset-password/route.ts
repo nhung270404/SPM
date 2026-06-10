@@ -5,12 +5,12 @@ import User from '@/models/user.model';
 import '@/lib/mongo';
 
 const resetPasswordSchema = z.object({
-  token: z.string({ required_error: 'Thiếu token' }),
+  token: z.string().min(1, 'Thiếu token'),
   password: z
-    .string({ required_error: 'Thiếu mật khẩu' })
-    .min(6, 'Mật khẩu phải có ít nhất 6 ký tự'),
+      .string()
+      .min(1, 'Thiếu mật khẩu')
+      .min(6, 'Mật khẩu phải có ít nhất 6 ký tự'),
 });
-
 export async function POST(
   req: Request,
   { params }: { params: Promise<Record<string, never>> }
@@ -62,7 +62,7 @@ export async function POST(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { message: error.errors[0]?.message ?? 'Dữ liệu không hợp lệ' },
+        { message: error.issues[0]?.message ?? 'Dữ liệu không hợp lệ' },
         { status: 400 }
       );
     }

@@ -8,6 +8,7 @@ import {
   Settings,
   LucideIcon
 } from 'lucide-react';
+import type { ComponentType, SVGProps } from 'react';
 
 // Tạo một bảng map từ Tên Chuỗi -> Component Icon
 const iconMap: Record<string, LucideIcon> = {
@@ -35,7 +36,9 @@ const DynamicIcon = ({ name, className, ...props }: DynamicIconProps) => {
   }
 
   // Nếu name đã là Component (trường hợp dùng ở client thuần)
-  const IconComponent = name;
+  // const IconComponent = name;
+  // return <IconComponent className={className} {...props} />;
+  const IconComponent = name as ComponentType<SVGProps<SVGSVGElement>>;
   return <IconComponent className={className} {...props} />;
 };
 

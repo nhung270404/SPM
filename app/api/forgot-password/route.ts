@@ -36,7 +36,7 @@ export async function POST(req: Request) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { message: error.errors[0]?.message ?? 'Dữ liệu không hợp lệ' },
+        { message: error.issues[0]?.message ?? 'Dữ liệu không hợp lệ' },
         { status: 400 }
       );
     }
@@ -46,4 +46,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
+}

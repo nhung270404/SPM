@@ -1,45 +1,50 @@
-import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongo';
-import WorkItem from '@/models/work-item.model';
-import { getAIInsight } from '@/lib/gemini';
-import { Types } from 'mongoose';
+import { NextRequest, NextResponse } from "next/server";
+import { connectToDatabase } from "@/lib/mongo";
+import WorkItem from "@/models/work-item.model";
+import { getAIInsight } from "@/lib/gemini";
+import { Types } from "mongoose";
 
-// Hàm helper để map màu cho trạng thái (Cậu có thể chỉnh theo ý thích)
 const getStatusColor = (status: string) => {
   switch (status.toLowerCase()) {
-    case 'done': return '#22c55e'; // Green
-    case 'completed': return '#22c55e';
-    case 'in progress': return '#eab308'; // Yellow
-    case 'doing': return '#eab308';
-    case 'todo': return '#3b82f6'; // Blue
-    case 'new': return '#3b82f6';
-    case 'backlog': return '#94a3b8'; // Gray
-    case 'cancel': return '#ef4444'; // Red
-    default: return '#8b5cf6'; // Purple (Unknown)
+    case "done":
+    case "completed":
+      return "#22c55e";
+    case "in progress":
+    case "doing":
+      return "#eab308";
+    case "todo":
+    case "new":
+      return "#3b82f6";
+    case "backlog":
+      return "#94a3b8";
+    case "cancel":
+      return "#ef4444";
+    default:
+      return "#8b5cf6";
   }
 };
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+type RouteContext = {
+  params: Promise<{ id: string }>;
+};
+
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
     await connectToDatabase();
-    const projectId = params.id;
+
+    const { id } = await context.params;
+    const projectId = id;
 
     if (!Types.ObjectId.isValid(projectId)) {
-      return NextResponse.json({ error: 'Invalid Project ID' }, { status: 400 });
+      return NextResponse.json({ error: "Invalid Project ID" }, { status: 400 });
     }
 
-    // 1. Lấy tất cả Task của dự án + thông tin người được assign
-    // Lưu ý: Cậu cần đảm bảo model WorkItem có field 'assignee' ref tới User
     const tasks = await WorkItem.find({ project: projectId })
-      .populate('assignee', 'firstname lastname email') // Chỉ lấy tên và email
-      .lean();
+        .populate("assignee", "firstname lastname email")
+        .lean();
 
     const now = new Date();
 
-    // 2. Tính toán các chỉ số cơ bản (Counters)
     let completedTasks = 0;
     let inProgressTasks = 0;
     let overdueTasks = 0;
@@ -47,80 +52,76 @@ export async function GET(
     let severelyOverdue = 0;
     let dueThisWeek = 0;
 
-    const fortyEightHoursLater = new Date(now.getTime() + (48 * 60 * 60 * 1000));
-    const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
+    const fortyEightHoursLater = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+    const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
 
-    // Tính toán tuần hiện tại
     const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
+    startOfWeek.setDate(
+        now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1)
+    );
     startOfWeek.setHours(0, 0, 0, 0);
+
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     endOfWeek.setHours(23, 59, 59, 999);
 
-    // Map để đếm status cho biểu đồ tròn
     const statusCountMap: Record<string, number> = {};
-
-    // Map để tính hiệu suất thành viên
-    const memberMap: Record<string, { name: string; done: number; total: number; overdue: number }> = {};
+    const memberMap: Record<
+        string,
+        { name: string; done: number; total: number; overdue: number }
+    > = {};
 
     tasks.forEach((task: any) => {
-      const status = task.status || 'Unknown';
+      const status = task.status || "Unknown";
+      const normalizedStatus = status.toLowerCase();
 
-      // Đếm status distribution
       statusCountMap[status] = (statusCountMap[status] || 0) + 1;
 
-      // Đếm chỉ số tổng quan
-      if (['done', 'completed'].includes(status.toLowerCase())) {
+      if (["done", "completed"].includes(normalizedStatus)) {
         completedTasks++;
-      } else if (['in progress', 'doing'].includes(status.toLowerCase())) {
+      } else if (["in progress", "doing"].includes(normalizedStatus)) {
         inProgressTasks++;
       }
 
-      // Check rủi ro deadline
-      if (!['done', 'completed', 'cancel'].includes(status.toLowerCase()) && task.dueDate) {
+      if (!["done", "completed", "cancel"].includes(normalizedStatus) && task.dueDate) {
         const dueDate = new Date(task.dueDate);
-        
-        // Quá hạn chung
+
         if (dueDate < now) {
           overdueTasks++;
-          // Quá hạn nặng (> 3 ngày)
+
           if (dueDate < threeDaysAgo) {
             severelyOverdue++;
           }
-        } 
-        // Sắp hết hạn (trong 48h tới)
-        else if (dueDate < fortyEightHoursLater) {
+        } else if (dueDate < fortyEightHoursLater) {
           atRiskTasks++;
         }
 
-        // Hết hạn trong tuần này
         if (dueDate >= startOfWeek && dueDate <= endOfWeek) {
           dueThisWeek++;
         }
       }
 
-      // Tính hiệu suất thành viên
       if (task.assignee) {
         const userId = task.assignee._id.toString();
-        // Ghép họ tên
-        const fullName = `${task.assignee.lastname || ''} ${task.assignee.firstname || ''}`.trim() || task.assignee.email;
+        const fullName =
+            `${task.assignee.lastname || ""} ${task.assignee.firstname || ""}`.trim() ||
+            task.assignee.email;
 
         if (!memberMap[userId]) {
           memberMap[userId] = { name: fullName, done: 0, total: 0, overdue: 0 };
         }
 
-        if (status.toLowerCase() !== 'cancel') {
+        if (normalizedStatus !== "cancel") {
           memberMap[userId].total++;
-          if (['done', 'completed'].includes(status.toLowerCase())) {
+
+          if (["done", "completed"].includes(normalizedStatus)) {
             memberMap[userId].done++;
           }
-          
-          // Check quá hạn cho từng thành viên
+
           if (
-            !['done', 'completed', 'cancel'].includes(status.toLowerCase()) &&
-            task.dueDate &&
-            new Date(task.dueDate) < now
+              !["done", "completed", "cancel"].includes(normalizedStatus) &&
+              task.dueDate &&
+              new Date(task.dueDate) < now
           ) {
             memberMap[userId].overdue++;
           }
@@ -128,75 +129,80 @@ export async function GET(
       }
     });
 
-    // 3. Chuẩn hóa dữ liệu Status Distribution (Biểu đồ cột dọc)
+    const totalTasks = tasks.length;
+    const totalActiveTasks = tasks.filter(
+        (task: any) => !["done", "completed", "cancel"].includes((task.status || "").toLowerCase())
+    ).length;
+
+    const delayRisk =
+        totalActiveTasks > 0
+            ? Math.round(((overdueTasks + atRiskTasks) / totalActiveTasks) * 100)
+            : 0;
+
     const statusDistribution = Object.entries(statusCountMap).map(([name, value]) => ({
       name,
-      value: Math.round((value / tasks.length) * 100), // Tính %
-      color: getStatusColor(name)
+      value: totalTasks > 0 ? Math.round((value / totalTasks) * 100) : 0,
+      color: getStatusColor(name),
     }));
 
-    // 4. Chuẩn hóa dữ liệu Member Performance (Bảng thành viên)
-    const memberPerformance = Object.values(memberMap).map((m) => ({
-      name: m.name,
-      done: m.done,
-      total: m.total,
-      overdue: m.overdue,
-      perf: m.total > 0 ? `${Math.round((m.done / m.total) * 100)}%` : '0%'
-    })).sort((a, b) => b.total - a.total); // Sắp xếp người làm nhiều nhất lên đầu
+    const memberPerformance = Object.values(memberMap)
+        .map((m) => ({
+          name: m.name,
+          done: m.done,
+          total: m.total,
+          overdue: m.overdue,
+          perf: m.total > 0 ? `${Math.round((m.done / m.total) * 100)}%` : "0%",
+        }))
+        .sort((a, b) => b.total - a.total);
 
-    // 5. Tính toán Progress Data (Velocity - 7 ngày gần nhất)
-    // Logic: Duyệt 7 ngày qua, đếm task được tạo (ongoing/new) và task hoàn thành trong ngày đó
     const progressData = [];
+
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateString = d.toISOString().split('T')[0]; // YYYY-MM-DD
-      const dayName = d.toLocaleDateString('en-US', { weekday: 'short' }); // Mon, Tue...
 
-      // Đếm task hoàn thành trong ngày này (dựa vào updatedAt hoặc completedAt nếu có)
-      // Ở đây tớ dùng tạm updatedAt cho đơn giản
+      const dateString = d.toISOString().split("T")[0];
+      const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
+
       const completedCount = tasks.filter((t: any) => {
-        if (!['done', 'completed'].includes(t.status.toLowerCase())) return false;
-        const taskDate = new Date(t.updatedAt).toISOString().split('T')[0];
+        if (!["done", "completed"].includes((t.status || "").toLowerCase())) {
+          return false;
+        }
+
+        const taskDate = new Date(t.updatedAt).toISOString().split("T")[0];
         return taskDate === dateString;
       }).length;
 
-      // Đếm task đang chạy (hoặc mới tạo) trong ngày
-      // Logic tạm: Task được tạo vào ngày này
       const createdCount = tasks.filter((t: any) => {
-        const taskDate = new Date(t.createdAt).toISOString().split('T')[0];
+        const taskDate = new Date(t.createdAt).toISOString().split("T")[0];
         return taskDate === dateString;
       }).length;
 
       progressData.push({
         name: dayName,
         completed: completedCount,
-        ongoing: createdCount // Hoặc đổi tên thành 'created' tùy logic cậu muốn
+        ongoing: createdCount,
       });
     }
 
-    // 5.1 GENERATE AI INSIGHT
-    let aiInsight = "";
-    const efficiencyRate = totalActiveTasks > 0 ? Math.round((completedTasks / totalActiveTasks) * 100) : 0;
+    const efficiencyRate =
+        totalActiveTasks > 0 ? Math.round((completedTasks / totalActiveTasks) * 100) : 0;
 
     const realAIInsight = await getAIInsight({
-      totalTasks: tasks.length,
+      totalTasks,
       completedTasks,
       overdueTasks,
       atRiskTasks,
       severelyOverdue,
-      efficiencyRate: `${efficiencyRate}%`
+      efficiencyRate: `${efficiencyRate}%`,
     });
 
-    if (realAIInsight) {
-      aiInsight = realAIInsight;
-    } else {
-      aiInsight = "AI Insight đang tạm thời không khả dụng. Vui lòng kiểm tra cấu hình API Key.";
-    }
+    const aiInsight =
+        realAIInsight ||
+        "AI Insight đang tạm thời không khả dụng. Vui lòng kiểm tra cấu hình API Key.";
 
-    // 6. Trả về kết quả JSON đúng format Frontend cần
     return NextResponse.json({
-      totalTasks: tasks.length,
+      totalTasks,
       completedTasks,
       inProgressTasks,
       overdueTasks,
@@ -205,16 +211,15 @@ export async function GET(
         severelyOverdue,
         dueThisWeek,
         delayRisk,
-        aiInsight
+        aiInsight,
       },
       memberCount: Object.keys(memberMap).length,
       progressData,
       statusDistribution,
-      memberPerformance
+      memberPerformance,
     });
-
   } catch (error) {
-    console.error('[STATISTICS_GET]', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("[STATISTICS_GET]", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

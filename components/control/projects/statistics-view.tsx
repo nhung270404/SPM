@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DeadlineRiskPanel } from '../statistics/deadline-risk-panel';
+import { cn } from '@/lib/utils';
 
 // --- INTERFACES ---
 interface ProjectStats {
