@@ -1,81 +1,133 @@
-import { NextRequest, NextResponse } from "next/server";
-import dbConnect from "@/lib/mongo";
-import mongoose from "mongoose";
+import { NextRequest, NextResponse } from 'next/server';
+import dbConnect from '@/lib/mongo';
+import mongoose from 'mongoose';
 
-const ProjectSchema =
-    mongoose.models.Project ||
-    mongoose.model(
-        "Project",
-        new mongoose.Schema(
-            {
-              title: String,
-              description: String,
-              status: String,
-              dueDate: String,
-              members: Array,
-            },
-            { timestamps: true }
-        )
-    );
+type ProjectData = {
+  title?: string;
+  description?: string;
+  status?: string;
+  dueDate?: string;
+  members?: string[];
+};
+
+type ProjectDocument = ProjectData & mongoose.Document;
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-export async function GET(request: NextRequest, context: RouteContext) {
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Internal Server Error';
+}
+
+const ProjectModel =
+    (mongoose.models.Project as mongoose.Model<ProjectDocument>) ||
+    mongoose.model<ProjectDocument>(
+        'Project',
+        new mongoose.Schema<ProjectData>(
+            {
+              title: String,
+              description: String,
+              status: String,
+              dueDate: String,
+              members: [String],
+            },
+            { timestamps: true }
+        )
+    );
+
+export async function GET(
+    _request: NextRequest,
+    context: RouteContext
+) {
   try {
     await dbConnect();
 
     const { id } = await context.params;
 
-    const project = await ProjectSchema.findById(id);
+    const project = await ProjectModel.findById(id);
 
     if (!project) {
       return NextResponse.json(
-          { error: "Không tìm thấy dự án" },
+          { error: 'Không tìm thấy dự án' },
           { status: 404 }
       );
     }
 
     return NextResponse.json(project);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+        { error: getErrorMessage(error) },
+        { status: 500 }
+    );
   }
 }
 
-export async function PUT(request: NextRequest, context: RouteContext) {
+export async function PUT(
+    request: NextRequest,
+    context: RouteContext
+) {
   try {
     await dbConnect();
 
     const { id } = await context.params;
-    const body = await request.json();
+    const body = await request.json() as ProjectData;
 
-    const updatedProject = await ProjectSchema.findByIdAndUpdate(
+    const updateData: ProjectData = {};
+
+    if (body.title !== undefined) updateData.title = body.title;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.status !== undefined) updateData.status = body.status;
+    if (body.dueDate !== undefined) updateData.dueDate = body.dueDate;
+    if (body.members !== undefined) updateData.members = body.members;
+
+    const updatedProject = await ProjectModel.findByIdAndUpdate(
         id,
-        { $set: body },
+        { $set: updateData },
         { new: true, runValidators: true }
     );
 
     if (!updatedProject) {
-      return NextResponse.json({ error: "Cập nhật thất bại" }, { status: 404 });
+      return NextResponse.json(
+          { error: 'Cập nhật thất bại' },
+          { status: 404 }
+      );
     }
 
     return NextResponse.json(updatedProject);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+        { error: getErrorMessage(error) },
+        { status: 500 }
+    );
   }
 }
 
-export async function DELETE(request: NextRequest, context: RouteContext) {
+export async function DELETE(
+    _request: NextRequest,
+    context: RouteContext
+) {
   try {
     await dbConnect();
 
     const { id } = await context.params;
 
-    await ProjectSchema.findByIdAndDelete(id);
+    const deletedProject = await ProjectModel.findByIdAndDelete(id);
 
-    return NextResponse.json({ message: "Đã xóa dự án thành công" });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!deletedProject) {
+      return NextResponse.json(
+          { error: 'Không tìm thấy dự án' },
+          { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      message: 'Đã xóa dự án thành công',
+    });
+  } catch (error: unknown) {
+    return NextResponse.json(
+        { error: getErrorMessage(error) },
+        { status: 500 }
+    );
   }
 }

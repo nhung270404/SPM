@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, {Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { User, Lock, Eye, EyeOff, Loader2, ArrowRight, AlertCircle } from 'lucide-react';
@@ -13,8 +13,20 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/context/user-context';
 import { toast } from 'sonner';
-
 export function LoginForm() {
+    return (
+        <Suspense
+            fallback={
+                <div className="flex h-full items-center justify-center bg-zinc-50 dark:bg-[#020617]">
+                    <Loader2 className="h-6 w-6 animate-spin text-cyan-500" />
+                </div>
+            }
+        >
+            <LoginFormConten />
+        </Suspense>
+    );
+}
+function LoginFormConten() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { refreshUser } = useUser();

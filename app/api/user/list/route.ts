@@ -23,7 +23,7 @@ export async function GET() {
 
     // 3. Trả về kết quả
     return NextResponse.json(users);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Lỗi lấy danh sách người dùng:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }

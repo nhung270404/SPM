@@ -43,11 +43,17 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, message: 'Gửi email thành công!' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('SEND MAIL ERROR:', error);
+
+    const message =
+        error instanceof Error ? error.message : 'Lỗi hệ thống khi gửi mail';
+
     return NextResponse.json(
-      { message: error.message || 'Lỗi hệ thống khi gửi mail' },
-      { status: 500 }
+        {
+          message,
+        },
+        { status: 500 }
     );
   }
 }

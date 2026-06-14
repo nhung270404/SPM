@@ -29,11 +29,17 @@ export async function POST(req: Request) {
         message: `${actionText} tài khoản thành công!`,
         newStatus: user.status
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('TOGGLE STATUS ERROR:', error);
+
+    const message =
+        error instanceof Error ? error.message : 'Lỗi hệ thống';
+
     return NextResponse.json(
-      { message: error.message || 'Lỗi hệ thống' },
-      { status: 500 }
+        {
+          message,
+        },
+        { status: 500 }
     );
   }
 }

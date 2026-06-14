@@ -73,11 +73,14 @@ export async function POST(
             { success: true },
             { status: 201 }
         );
-    } catch (error: any) {
+    }catch (error: unknown) {
         console.error('SIGNUP ERROR:', error);
 
+        const message =
+            error instanceof Error ? error.message : 'Internal Server Error';
+
         return NextResponse.json(
-            { message: error?.message || 'Internal Server Error' },
+            { message },
             { status: 500 }
         );
     }

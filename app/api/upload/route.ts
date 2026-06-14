@@ -35,8 +35,18 @@ export async function POST(req: NextRequest) {
             name: originalName,
             size: file.size
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Upload error:', error);
-        return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
+
+        const message =
+            error instanceof Error ? error.message : 'Internal Server Error';
+
+        return NextResponse.json(
+            {
+                error: 'Internal Server Error',
+                details: message,
+            },
+            { status: 500 }
+        );
     }
 }

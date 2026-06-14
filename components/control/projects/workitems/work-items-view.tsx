@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -17,8 +17,20 @@ import { WorkItemsCreateDialog } from './work-items-create';
 import { WorkItemsDetailPanel } from './work-items-detail';
 import { Task, STATUS_TRANSITIONS } from './work-items-types';
 import { normalizeDate, toDateOnly } from './work-items-utils';
-
-export function WorkItemsView({ projectId: _projectId }: { projectId: string }) {
+export function WorkItemsView(props: { projectId: string }) {
+  return (
+      <Suspense
+          fallback={
+            <div className="flex h-full items-center justify-center bg-zinc-50 dark:bg-[#020617]">
+              <Loader2 className="h-6 w-6 animate-spin text-cyan-500" />
+            </div>
+          }
+      >
+        <WorkItemsViewContent {...props} />
+      </Suspense>
+  );
+}
+ function WorkItemsViewContent({ projectId: _projectId }: { projectId: string }) {
   const { user: currentUser } = useUser();
   const [winReady, setWinReady] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);

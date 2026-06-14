@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, {Suspense, useState} from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Eye, EyeOff, Loader2, CheckCircle2, Save } from 'lucide-react';
@@ -12,8 +12,15 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-
 export function ResetPasswordForm() {
+  return (
+      <Suspense fallback={<div className="text-center text-sm text-slate-500">Đang tải...</div>}>
+        <ResetPasswordFormContent />
+      </Suspense>
+  );
+}
+
+export function ResetPasswordFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token'); // Lấy token từ URL

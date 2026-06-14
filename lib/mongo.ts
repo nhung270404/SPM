@@ -12,7 +12,6 @@ interface MongooseCache {
 }
 
 declare global {
-    // eslint-disable-next-line no-var
     var mongoose: MongooseCache | undefined;
 }
 
@@ -49,8 +48,6 @@ async function dbConnect() {
 
     return cached!.conn;
 }
-
-// --- XUẤT RA CẢ 2 DẠNG ĐỂ KHÔNG BỊ LỖI ---
 
 // 1. Dạng Default (Cho các file cũ như config.service.ts)
 export default dbConnect;

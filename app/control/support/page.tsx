@@ -1,62 +1,94 @@
 'use client';
 
-import * as React from 'react';
 import { useState, useEffect, useRef } from 'react';
 import { ChatHeader } from '@/components/control/support/chat-header';
-import { ChatMessages, Message } from '@/components/control/support/chat-messages';
+import {
+  ChatMessages,
+  type Message,
+} from '@/components/control/support/chat-messages';
 import { ChatInput } from '@/components/control/support/chat-input';
-import { Card } from '@/components/ui/card';
 
 const INITIAL_MESSAGES: Message[] = [
   {
     id: '1',
-    content: 'Xin chào! Tôi là trợ lý ảo của Smart SPM. Tôi có thể giúp gì cho bạn hôm nay?',
+    content:
+        'Xin chào! Tôi là trợ lý ảo của Smart SPM. Tôi có thể giúp gì cho bạn hôm nay?',
     sender: 'bot',
     timestamp: new Date(),
   },
 ];
 
+type ChatSender = 'user' | 'bot';
+
+type ChatHistoryItem = {
+  _id?: string;
+  content?: string;
+  sender?: string;
+  timestamp?: string | Date;
+};
+
+type ChatHistoryResponse = {
+  success?: boolean;
+  data?: ChatHistoryItem[];
+};
+
+type ChatSendResponse = {
+  success?: boolean;
+  reply?: string;
+  message?: string;
+  data?: {
+    _id?: string;
+  };
+};
+
+function isChatSender(value: unknown): value is ChatSender {
+  return value === 'user' || value === 'bot';
+}
+
+function createMessageId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export default function SupportPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 1. Load lịch sử từ DATABASE khi vào trang
   useEffect(() => {
     const fetchHistory = async () => {
       try {
         const res = await fetch('/api/chat');
-        const json = await res.json();
+        const json = await res.json() as ChatHistoryResponse;
+
         if (json.success && json.data && json.data.length > 0) {
-          // Chuyển string timestamp ngược lại thành Date object
-          const formatted = json.data.map((m: any) => ({
-            id: m._id,
-            content: m.content,
-            sender: m.sender,
-            timestamp: new Date(m.timestamp)
+          const formatted: Message[] = json.data.map((item) => ({
+            id: item._id || createMessageId(),
+            content: item.content || '',
+            sender: isChatSender(item.sender) ? item.sender : 'bot',
+            timestamp: item.timestamp
+                ? new Date(item.timestamp)
+                : new Date(),
           }));
+
           setMessages(formatted);
         } else {
           setMessages(INITIAL_MESSAGES);
         }
-      } catch (e) {
-        console.error("Lỗi khi load lịch sử chat từ DB:", e);
+      } catch (error: unknown) {
+        console.error('Lỗi khi load lịch sử chat từ DB:', error);
         setMessages(INITIAL_MESSAGES);
       }
     };
-    fetchHistory();
+
+    void fetchHistory();
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  }, [messages]);
 
   const handleSendMessage = async (content: string) => {
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: createMessageId(),
       content,
       sender: 'user',
       timestamp: new Date(),
@@ -76,10 +108,10 @@ export default function SupportPage() {
         }),
       });
 
-      const json = await res.json();
+      const json = await res.json() as ChatSendResponse;
 
       const botResponse: Message = {
-        id: json.data?._id || (Date.now() + 1).toString(),
+        id: json.data?._id || createMessageId(),
         content:
             json.reply ||
             json.message ||
@@ -89,11 +121,11 @@ export default function SupportPage() {
       };
 
       setMessages((prev) => [...prev, botResponse]);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Chat fetch error:', error);
 
       const botResponse: Message = {
-        id: (Date.now() + 1).toString(),
+        id: createMessageId(),
         content: 'Có lỗi khi kết nối AI chatbot.',
         sender: 'bot',
         timestamp: new Date(),
@@ -104,19 +136,17 @@ export default function SupportPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-48px)] bg-white dark:bg-slate-950">
-      <ChatHeader />
-      
-      {/* Khu vực tin nhắn có thanh cuộn riêng */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <ChatMessages messages={messages} />
-        <div ref={messagesEndRef} />
-      </div>
+      <div className="flex-1 flex flex-col h-[calc(100vh-48px)] bg-white dark:bg-slate-950">
+        <ChatHeader />
 
-      {/* Thanh nhập liệu được GHIM CHẶT ở dưới cùng màn hình */}
-      <div className="sticky bottom-0 border-t p-4 bg-white dark:bg-slate-950 z-10">
-        <ChatInput onSendMessage={handleSendMessage} />
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <ChatMessages messages={messages} />
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="sticky bottom-0 border-t p-4 bg-white dark:bg-slate-950 z-10">
+          <ChatInput onSendMessage={handleSendMessage} />
+        </div>
       </div>
-    </div>
   );
 }

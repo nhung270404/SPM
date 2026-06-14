@@ -17,9 +17,15 @@ export async function POST(request: Request) {
         return new Response(null, {
             status: 200,
         });
-    } catch (error: any) {
-        return new Response(JSON.stringify({ error: error.message }), {
+    } catch (error: unknown) {
+        const message =
+            error instanceof Error ? error.message : 'Đăng nhập thất bại';
+
+        return new Response(JSON.stringify({ error: message }), {
             status: 401,
+            headers: {
+                'Content-Type': 'application/json',
+            },
         });
     }
 }
