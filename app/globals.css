@@ -225,38 +225,46 @@ div[data-sidebar="sidebar"] { background-color: var(--sidebar) !important; borde
 
 /* PREMIUM GLASS TOAST STYLES - Synchronized with Global Variables */
 .premium-toast {
-  @apply flex items-center gap-4 px-6 py-4 transition-all duration-500;
-  border-radius: 1.5rem !important;
+  @apply flex items-center gap-3 px-6 py-3.5 transition-all duration-500;
+  border-radius: 9999px !important;
   border-style: solid !important;
   border-width: 1px !important;
   backdrop-filter: blur(24px) !important;
   -webkit-backdrop-filter: blur(24px) !important;
-  background-color: color-mix(in oklch, var(--card), transparent 20%) !important;
-  border-color: color-mix(in oklch, var(--border), transparent 40%) !important;
-  color: var(--foreground) !important;
-  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.15) !important;
+  background-color: var(--primary) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  box-shadow: 0 20px 50px -12px rgba(54, 202, 241, 0.3) !important;
+  width: max-content !important;
+  min-width: 250px !important;
+  margin: 0 auto !important;
+  justify-content: center !important;
 }
 
 .dark .premium-toast {
-  background-color: color-mix(in oklch, var(--card), transparent 40%) !important;
-  border-color: color-mix(in oklch, var(--border), transparent 60%) !important;
+  background-color: var(--primary) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 20px 50px -12px rgba(54, 202, 241, 0.1) !important;
 }
 
 .premium-toast-title {
-  font-weight: 700 !important;
-  letter-spacing: -0.025em !important;
-  font-size: 14px !important;
-  color: var(--foreground) !important;
+  font-weight: 600 !important;
+  letter-spacing: normal !important;
+  font-size: 15px !important;
+  color: white !important;
   border: 0 !important;
 }
 
 .premium-toast-description {
   font-weight: 500 !important;
-  font-size: 12px !important;
-  color: var(--muted-foreground) !important;
+  font-size: 13px !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  margin-top: 2px !important;
 }
 
 /* Status variants using system colors */
-.premium-toast [data-icon] {
+.premium-toast [data-icon],
+.premium-toast svg {
   flex-shrink: 0 !important;
+  color: white !important;
 }

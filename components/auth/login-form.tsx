@@ -47,7 +47,7 @@ export function LoginForm() {
             toast.success("Đăng nhập thành công!", { position: 'top-center' });
             router.push(searchParams.get('redirect') || '/control');
         } catch (err: any) {
-            console.error(err);
+            console.log("Login failed:", err?.response?.data?.message || err.message);
             setError("Tài khoản hoặc mật khẩu không đúng. Vui lòng nhập lại.");
         } finally {
             setLoading(false);

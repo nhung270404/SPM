@@ -211,7 +211,7 @@ const GreetingSection = () => {
                       <div className="flex items-center gap-2.5">
                           <div className="bg-[#36caf1] h-7 w-7 flex items-center justify-center rounded-lg text-[10px] text-white font-bold shadow-lg shadow-[#36caf1]/20">XP</div>
                           <div className="flex flex-col">
-                              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide">LV.{stats.level} - {stats.levelTitle}</span>
+                              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide">LV.{stats.level}</span>
                               <span className="text-[10px] text-slate-500 dark:text-slate-400">Tiến độ hôm nay</span>
                           </div>
                       </div>

@@ -3,68 +3,43 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Mail, Loader2, ArrowLeft, Send, AlertCircle } from 'lucide-react';
+import { Mail, Loader2, ArrowLeft, Send, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { POST_METHOD } from '@/lib/req';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export function ForgotPasswordForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess(false);
 
-    if (!email.trim() || !phone.trim() || !newPassword.trim()) {
-      setError("Vui lòng điền đầy đủ các thông tin.");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp.");
+    if (!email.trim()) {
+      setError("Vui lòng điền địa chỉ email của bạn.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const res: any = await POST_METHOD('/api/forgot-password', { 
-        email, 
-        phone, 
-        newPassword 
-      });
+      const res: any = await POST_METHOD('/api/forgot-password', { email });
 
-      if (res.message) {
-         toast.success(res.message, { position: 'top-center' });
-      } else {
-         toast.success("Mật khẩu đã được đặt lại thành công!", { position: 'top-center' });
-      }
-
-      setTimeout(() => {
-        router.push('/login');
-      }, 2000);
+      setSuccess(true);
+      toast.success("Yêu cầu đã được gửi!", { position: 'top-center' });
 
     } catch (err: any) {
-      // Lấy thông báo lỗi cụ thể từ Server (nếu có)
       const serverMessage = err.response?.data?.message || err.message;
-      
-      if (serverMessage.includes('400') || serverMessage.includes('không chính xác')) {
-        setError("Thông tin Email hoặc Số điện thoại không chính xác. Vui lòng kiểm tra lại.");
-      } else {
-        setError(serverMessage || "Có lỗi xảy ra, vui lòng thử lại.");
-      }
+      setError(serverMessage || "Có lỗi xảy ra, vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -82,16 +57,15 @@ export function ForgotPasswordForm() {
           Khôi phục mật khẩu
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 px-6">
-          Xác thực danh tính bằng Email và Số điện thoại để đặt lại mật khẩu.
+          Nhập địa chỉ email của bạn, chúng tôi sẽ gửi một đường dẫn để giúp bạn đặt lại mật khẩu.
         </p>
       </CardHeader>
 
       <CardContent className="px-8 pb-10">
-        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {!success ? (
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
             <div className="space-y-2">
-              <Label className="text-[12px] font-bold text-slate-500 uppercase ml-1">Email</Label>
+              <Label className="text-[12px] font-bold text-slate-500 uppercase ml-1">Email của bạn</Label>
               <Input
                 type="email"
                 placeholder="email@example.com"
@@ -100,63 +74,48 @@ export function ForgotPasswordForm() {
                 onChange={e => setEmail(e.target.value)}
               />
             </div>
+
+            {error && (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-[13px] font-semibold">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {error}
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              className="w-full h-13 bg-gradient-to-r from-[#36caf1] to-[#03bdd8] hover:opacity-90 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/20 transition-all active:scale-[0.98] border-none mt-2 uppercase tracking-wide"
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Gửi liên kết khôi phục"}
+            </Button>
+
+            <div className="text-center pt-4">
+              <Link href="/login" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-[#36caf1] font-bold group">
+                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" /> Quay lại đăng nhập
+              </Link>
+            </div>
+          </form>
+        ) : (
+          <div className="text-center space-y-6 animate-in fade-in zoom-in duration-500">
+            <div className="flex justify-center">
+              <div className="p-4 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500">
+                <CheckCircle2 className="h-12 w-12" />
+              </div>
+            </div>
             <div className="space-y-2">
-              <Label className="text-[12px] font-bold text-slate-500 uppercase ml-1">Số điện thoại</Label>
-              <Input
-                type="text"
-                placeholder="09xxx..."
-                className="h-12 rounded-xl bg-slate-50/50 dark:bg-slate-950/50"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-              />
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Kiểm tra hộp thư của bạn</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Chúng tôi đã gửi một liên kết khôi phục mật khẩu tới địa chỉ <span className="font-semibold text-slate-700 dark:text-slate-300">{email}</span>. Vui lòng kiểm tra cả thư mục Spam nếu không thấy.
+              </p>
+            </div>
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+              <Link href="/login" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-[#36caf1] font-bold group">
+                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" /> Về trang đăng nhập
+              </Link>
             </div>
           </div>
-
-          <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <div className="space-y-2">
-              <Label className="text-[12px] font-bold text-slate-500 uppercase ml-1">Mật khẩu mới</Label>
-              <Input
-                type="password"
-                placeholder="••••••••"
-                className="h-12 rounded-xl bg-slate-50/50 dark:bg-slate-950/50"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[12px] font-bold text-slate-500 uppercase ml-1">Xác nhận mật khẩu</Label>
-              <Input
-                type="password"
-                placeholder="••••••••"
-                className="h-12 rounded-xl bg-slate-50/50 dark:bg-slate-950/50"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {error && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-[13px] font-semibold">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              {error}
-            </div>
-          )}
-
-          <Button
-            type="submit"
-            className="w-full h-13 bg-gradient-to-r from-[#36caf1] to-[#03bdd8] hover:opacity-90 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/20 transition-all active:scale-[0.98] border-none mt-2"
-            disabled={loading}
-          >
-            {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "ĐẶT LẠI MẬT KHẨU"}
-          </Button>
-
-          <div className="text-center pt-2">
-            <Link href="/login" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-[#36caf1] font-bold group">
-              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" /> Quay lại đăng nhập
-            </Link>
-          </div>
-
-        </form>
+        )}
       </CardContent>
     </Card>
   );

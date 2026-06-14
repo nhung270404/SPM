@@ -1,5 +1,6 @@
 import User from '@/models/user.model';
 import Role from '@/models/role.model';
+import Project from '@/models/project.model';
 import dbConnect from '@/lib/mongo';
 
 /**
@@ -19,7 +20,19 @@ export const getAllUsers = async () => {
       select: 'name title level'
     })
     .sort({ createdAt: -1 })
-    .lean();
+    .lean() as any[];
+
+  // Lấy tất cả project để map vào user
+  const projects = await Project.find({}).select('_id title members manager').lean() as any[];
+
+  users.forEach(user => {
+    user.projects = projects
+      .filter(p => 
+        (p.members && p.members.some((m: any) => m.toString() === user._id.toString())) || 
+        (p.manager && p.manager.toString() === user._id.toString())
+      )
+      .map(p => p.title);
+  });
 
   return users;
 };

@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import {
   Search, Plus, MoreHorizontal, Download, Trash2, Edit,
   User as UserIcon, Mail, RefreshCw, Users, UserCheck, UserPlus,
-  ShieldCheck, MailPlus, Loader2
+  ShieldCheck, MailPlus, Loader2, Send, FolderKanban
 } from 'lucide-react';
 
 // UI Components
@@ -21,6 +21,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from '@/lib/utils';
 import { useUser } from '@/context/user-context';
 
@@ -61,7 +63,65 @@ export function UserManagementView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Modal States
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isMailOpen, setIsMailOpen] = useState(false);
+  const [mailForm, setMailForm] = useState({ subject: '', message: '' });
+  const [isSendingMail, setIsSendingMail] = useState(false);
+
   const router = useRouter();
+
+  const handleToggleStatus = async (userId: string) => {
+    try {
+      const res = await fetch('/api/user/toggle-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message);
+        fetchUsers();
+      } else {
+        toast.error(data.message);
+      }
+    } catch (e) {
+      toast.error("Lỗi hệ thống");
+    }
+  };
+
+  const handleSendMail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mailForm.subject.trim() || !mailForm.message.trim()) {
+      toast.error("Vui lòng điền đủ thông tin");
+      return;
+    }
+    setIsSendingMail(true);
+    try {
+      const res = await fetch('/api/user/send-mail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: selectedUser.email,
+          subject: mailForm.subject,
+          message: mailForm.message
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message);
+        setIsMailOpen(false);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (e) {
+      toast.error("Lỗi hệ thống");
+    } finally {
+      setIsSendingMail(false);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -74,10 +134,23 @@ export function UserManagementView() {
           email: u.email,
           role: u.roles && u.roles.length > 0 ? (u.roles[0].title || u.roles[0].name) : (u.position || 'Nhân viên'),
           department: u.department || 'Chưa xác định',
+          projects: u.projects || [],
           status: u.status === 'active' ? 'Active' : 'Offline',
           lastActive: u.updatedAt ? new Date(u.updatedAt).toLocaleDateString('vi-VN') : 'Vừa xong',
           avatar: u.avatar || ''
         }));
+
+        // Sắp xếp: Quản trị viên lên đầu, sau đó sắp xếp theo tên (A-Z)
+        mappedData.sort((a: any, b: any) => {
+          const isAAdmin = a.role === 'Admin' || a.role === 'Quản trị viên';
+          const isBAdmin = b.role === 'Admin' || b.role === 'Quản trị viên';
+          
+          if (isAAdmin && !isBAdmin) return -1;
+          if (!isAAdmin && isBAdmin) return 1;
+          
+          return a.name.localeCompare(b.name, 'vi');
+        });
+
         setUsers(mappedData);
       }
     } catch (error) {
@@ -144,10 +217,17 @@ export function UserManagementView() {
 
       {/* --- REFINED HEADER SECTION --- */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="h-1 w-6 bg-[#36caf1] rounded-full" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#36caf1]">Nhân sự hệ thống</span>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-cyan-500/20 to-cyan-500/5 dark:from-cyan-500/30 dark:to-cyan-500/10 rounded-2xl border border-cyan-500/20">
+            <Users className="h-7 w-7 text-cyan-500" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+              Nhân sự hệ thống
+            </h1>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
+              Quản lý, phân quyền và theo dõi hoạt động của tất cả thành viên
+            </p>
           </div>
         </div>
 
@@ -172,15 +252,6 @@ export function UserManagementView() {
             <Download className="mr-2 h-3.5 w-3.5" />
             Excel
           </Button>
-
-          {isAdmin && (
-            <Button className="h-9 px-5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white shadow-lg shadow-cyan-500/20 transition-all font-black text-[11px] uppercase tracking-wider group" asChild>
-              <Link href="/control/user/create">
-                <UserPlus className="mr-2 h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
-                Thêm thành viên
-              </Link>
-            </Button>
-          )}
         </div>
       </div>
 
@@ -243,7 +314,7 @@ export function UserManagementView() {
                   <TableHeader className="bg-slate-50/30 dark:bg-slate-900/20 border-y border-slate-100 dark:border-slate-800">
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="min-w-[280px] px-8 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">Họ và tên / Email</TableHead>
-                      <TableHead className="min-w-[180px] py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">Vị trí / Phòng ban</TableHead>
+                      <TableHead className="min-w-[180px] py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">Vị trí</TableHead>
                       <TableHead className="min-w-[150px] py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">Trạng thái</TableHead>
                       <TableHead className="min-w-[150px] py-3 text-[9px] font-black uppercase tracking-widest text-slate-400">Truy cập</TableHead>
                       <TableHead className="w-[80px] px-6 py-3 text-right"></TableHead>
@@ -275,15 +346,14 @@ export function UserManagementView() {
                             <div className="flex flex-col items-center gap-1">
                               <Badge
                                 className={cn(
-                                  "text-[9px] font-black px-2 py-0.5 rounded-lg border-none shadow-sm uppercase tracking-tighter",
+                                  "text-[9px] font-black px-2.5 py-1 rounded-md border-none shadow-sm uppercase tracking-widest",
                                   user.role === 'Admin' || user.role === 'Quản trị viên'
-                                    ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400"
+                                    ? "bg-rose-500 text-white shadow-rose-500/30 dark:bg-rose-600 dark:shadow-rose-900/30"
                                     : "bg-cyan-50 text-cyan-600 dark:bg-cyan-500/20 dark:text-cyan-400"
                                 )}
                               >
                                 {user.role}
                               </Badge>
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{user.department}</span>
                             </div>
                           </TableCell>
 
@@ -315,11 +385,17 @@ export function UserManagementView() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-52 p-1.5 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-800 shadow-2xl">
-                                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group/item">
+                                <DropdownMenuItem 
+                                  className="flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group/item"
+                                  onClick={() => { setSelectedUser(user); setIsDetailOpen(true); }}
+                                >
                                   <UserIcon className="h-4 w-4 text-cyan-500 group-hover/item:scale-110 transition-transform" />
                                   <span className="font-bold text-xs uppercase tracking-wider">Xem chi tiết</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group/item">
+                                <DropdownMenuItem 
+                                  className="flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group/item"
+                                  onClick={() => { setSelectedUser(user); setMailForm({subject:'', message:''}); setIsMailOpen(true); }}
+                                >
                                   <MailPlus className="h-4 w-4 text-indigo-500 group-hover/item:scale-110 transition-transform" />
                                   <span className="font-bold text-xs uppercase tracking-wider">Gửi mail</span>
                                 </DropdownMenuItem>
@@ -328,15 +404,22 @@ export function UserManagementView() {
                                   <>
                                     <DropdownMenuSeparator className="my-1.5 opacity-50" />
                                     <DropdownMenuItem 
-                                      className="flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer bg-red-50/50 hover:bg-red-50 dark:bg-red-900/10 text-red-600 transition-all group/item"
+                                      className={cn(
+                                        "flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all group/item",
+                                        user.status === 'Active' 
+                                          ? "bg-red-50/50 hover:bg-red-50 dark:bg-red-900/10 text-red-600" 
+                                          : "bg-emerald-50/50 hover:bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600"
+                                      )}
                                       onClick={() => {
-                                        if (window.confirm(`Bạn có chắc chắn muốn xóa nhân viên ${user.name}?`)) {
-                                          toast.error("Chức năng xóa đang được phát triển");
+                                        if (window.confirm(`Bạn có chắc chắn muốn ${user.status === 'Active' ? 'khóa' : 'khôi phục'} tài khoản ${user.name}?`)) {
+                                          handleToggleStatus(user.id);
                                         }
                                       }}
                                     >
-                                      <Trash2 className="h-4 w-4" />
-                                      <span className="font-black text-xs uppercase tracking-wider">Xóa dữ liệu</span>
+                                      {user.status === 'Active' ? <Trash2 className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
+                                      <span className="font-black text-xs uppercase tracking-wider">
+                                        {user.status === 'Active' ? 'Khóa tài khoản' : 'Khôi phục'}
+                                      </span>
                                     </DropdownMenuItem>
                                   </>
                                 )}
@@ -406,6 +489,126 @@ export function UserManagementView() {
           </div>
         </div>
       </Card>
+
+      {/* MODAL: Xem chi tiết */}
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="sm:max-w-[425px] rounded-3xl bg-white dark:bg-slate-900 border-none shadow-2xl p-0 overflow-hidden">
+          <DialogTitle className="sr-only">Thông tin nhân sự</DialogTitle>
+          <div className="h-24 bg-gradient-to-r from-cyan-500 to-blue-500 w-full" />
+          
+          {selectedUser && (
+            <div className="px-6 pb-6 pt-0 relative flex flex-col items-center">
+              <Avatar className="h-24 w-24 rounded-3xl shadow-xl ring-4 ring-white dark:ring-slate-900 -mt-12 bg-white">
+                <AvatarImage src={selectedUser.avatar} className="object-cover" />
+                <AvatarFallback className="bg-cyan-500 text-white font-black text-3xl uppercase">
+                  {selectedUser.name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              
+              <div className="text-center mt-3 space-y-1">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white">{selectedUser.name}</h3>
+                <Badge className={cn("text-[10px] uppercase font-black", selectedUser.role === 'Admin' || selectedUser.role === 'Quản trị viên' ? "bg-rose-500 text-white" : "bg-cyan-100 text-cyan-700")}>
+                  {selectedUser.role}
+                </Badge>
+              </div>
+
+              <div className="w-full mt-6 space-y-4 bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm"><Mail className="h-4 w-4 text-cyan-500" /></div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</span>
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{selectedUser.email}</span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm mt-0.5"><FolderKanban className="h-4 w-4 text-indigo-500" /></div>
+                  <div className="flex flex-col flex-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Dự án tham gia</span>
+                    {selectedUser.projects && selectedUser.projects.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedUser.projects.map((p: string, idx: number) => (
+                          <Badge key={idx} variant="outline" className="bg-white/50 dark:bg-slate-800/50 text-[10px] text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/30">
+                            {p}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-[11px] font-medium text-slate-500 italic">Chưa tham gia dự án nào</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm">
+                    <div className={cn("h-4 w-4 rounded-full border-2 border-white dark:border-slate-800 shadow-sm", selectedUser.status === 'Active' ? "bg-emerald-500" : "bg-slate-400")} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Trạng thái</span>
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                      {selectedUser.status === 'Active' ? 'Đang hoạt động' : 'Đã bị khóa'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL: Gửi Email */}
+      <Dialog open={isMailOpen} onOpenChange={setIsMailOpen}>
+        <DialogContent className="sm:max-w-[500px] rounded-3xl bg-white dark:bg-slate-900 border-none shadow-2xl">
+          <DialogHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
+            <DialogTitle className="text-xl font-black uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-3">
+              <div className="p-2 bg-indigo-50 dark:bg-indigo-500/20 rounded-xl text-indigo-500">
+                 <MailPlus className="h-5 w-5" />
+              </div>
+              Gửi Email
+            </DialogTitle>
+            <DialogDescription className="hidden">Gửi mail</DialogDescription>
+          </DialogHeader>
+          
+          {selectedUser && (
+            <form onSubmit={handleSendMail} className="py-2 space-y-5">
+              <div className="space-y-2">
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">Tới nhân sự:</label>
+                <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl font-bold text-sm text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                  <Avatar className="h-6 w-6"><AvatarImage src={selectedUser.avatar} /><AvatarFallback className="bg-cyan-500 text-white text-[10px]">{selectedUser.name.charAt(0)}</AvatarFallback></Avatar>
+                  {selectedUser.name} &lt;{selectedUser.email}&gt;
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">Tiêu đề thư</label>
+                <Input 
+                  placeholder="Ví dụ: Lịch họp dự án tuần này..."
+                  value={mailForm.subject}
+                  onChange={e => setMailForm({...mailForm, subject: e.target.value})}
+                  className="rounded-xl border-slate-200 dark:border-slate-800 font-medium h-12 bg-slate-50 dark:bg-slate-900"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">Nội dung</label>
+                <Textarea 
+                  placeholder="Nhập nội dung thư muốn gửi..."
+                  value={mailForm.message}
+                  onChange={e => setMailForm({...mailForm, message: e.target.value})}
+                  className="rounded-xl border-slate-200 dark:border-slate-800 min-h-[140px] resize-none font-medium p-4 bg-slate-50 dark:bg-slate-900 leading-relaxed"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-3">
+                <Button type="button" variant="ghost" onClick={() => setIsMailOpen(false)} className="rounded-xl font-bold h-11 px-5 hover:bg-slate-100 dark:hover:bg-slate-800">Đóng</Button>
+                <Button type="submit" disabled={isSendingMail} className="rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold h-11 px-6 shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">
+                  {isSendingMail ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                  Gửi thư đi
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
