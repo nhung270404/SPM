@@ -92,6 +92,25 @@ export function UserManagementView() {
     }
   };
 
+  const handleUpdateRole = async (userId: string, action: 'promote' | 'demote') => {
+    try {
+      const res = await fetch('/api/user/update-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId, action })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message);
+        fetchUsers();
+      } else {
+        toast.error(data.message);
+      }
+    } catch (e) {
+      toast.error("Lỗi hệ thống");
+    }
+  };
+
   const handleSendMail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mailForm.subject.trim() || !mailForm.message.trim()) {
@@ -403,6 +422,28 @@ export function UserManagementView() {
                                 {isAdmin && (
                                   <>
                                     <DropdownMenuSeparator className="my-1.5 opacity-50" />
+                                    <DropdownMenuItem 
+                                      className={cn(
+                                        "flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all group/item",
+                                        (user.role === 'Admin' || user.role === 'Quản trị viên')
+                                          ? "hover:bg-amber-50 dark:hover:bg-amber-900/10 text-amber-600"
+                                          : "hover:bg-blue-50 dark:hover:bg-blue-900/10 text-blue-600"
+                                      )}
+                                      onClick={() => {
+                                        const action = (user.role === 'Admin' || user.role === 'Quản trị viên') ? 'demote' : 'promote';
+                                        const confirmText = action === 'promote' 
+                                          ? `Bạn có chắc muốn cấp quyền Quản trị viên (Admin) cho ${user.name}?` 
+                                          : `Bạn có chắc muốn thu hồi quyền Quản trị viên của ${user.name}?`;
+                                        if (window.confirm(confirmText)) {
+                                          handleUpdateRole(user.id, action);
+                                        }
+                                      }}
+                                    >
+                                      <ShieldCheck className="h-4 w-4" />
+                                      <span className="font-black text-xs uppercase tracking-wider">
+                                        {(user.role === 'Admin' || user.role === 'Quản trị viên') ? 'Thu hồi quyền Admin' : 'Cấp quyền Admin'}
+                                      </span>
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem 
                                       className={cn(
                                         "flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all group/item",

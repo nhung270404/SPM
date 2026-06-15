@@ -14,7 +14,7 @@ const cachedAIInsightMap = new Map<
   }
 >();
 
-const AI_CACHE_TIME = 10 * 60 * 1000;
+const AI_CACHE_TIME = 60 * 60 * 1000;
 
 export async function GET(req: Request) {
   try {
@@ -145,10 +145,10 @@ export async function GET(req: Request) {
     const delayRisk = activeTasksCount > 0 ? Math.round((overdueTasks / activeTasksCount) * 100) : 0;
 
     const statusColors: Record<string, string> = {
-      Done: '#06b6d4',
+      Backlog: '#94a3b8',
+      Todo: '#06b6d4',
       'In Progress': '#3b82f6',
-      Todo: '#8b5cf6',
-      Backlog: '#64748b',
+      Done: '#22c55e',
       Cancel: '#ef4444',
     };
 

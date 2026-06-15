@@ -9,7 +9,10 @@ const resetPasswordSchema = z.object({
   password: z
       .string()
       .min(1, 'Thiếu mật khẩu')
-      .min(6, 'Mật khẩu phải có ít nhất 6 ký tự'),
+      .min(6, 'Mật khẩu phải có ít nhất 6 ký tự')
+      .refine((value) => !/\s/.test(value), {
+        message: 'Mật khẩu không được chứa khoảng trắng!',
+      }),
 });
 export async function POST(
   req: Request,

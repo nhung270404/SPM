@@ -72,7 +72,7 @@ export function ProjectCreateDialog({ open, onOpenChange, onSuccess }: ProjectCr
   const searchUsers = async () => {
     try {
       // Tìm kiếm ngay cả khi chuỗi rỗng để hiển thị gợi ý khi focus
-      const res = await fetch(`/api/user/search?q=${newMemberName}&limit=10`);
+      const res = await fetch(`/api/user/search?q=${newMemberName}&limit=50`);
       const data = await res.json();
       setSearchResults(data.users || []);
     } catch (error) {

@@ -15,21 +15,18 @@ function getErrorStatus(error: unknown): number {
   return message.includes('không được') ? 400 : 500;
 }
 export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
     const tasks = await WorkItemService.getWorkItems(id);
-    return NextResponse.json(tasks);
-  }catch (error: unknown) {
-    console.error('❌ Lỗi TẠO TASK:', error);
-
+    return NextResponse.json(tasks, { status: 200 });
+  } catch (error: any) {
+    console.error('Lỗi GET tasks:', error);
     return NextResponse.json(
-        {
-          error: getErrorMessage(error, 'Failed to create task'),
-        },
-        { status: getErrorStatus(error) }
+      { error: error.message || 'Failed to fetch tasks' },
+      { status: 500 }
     );
   }
 }

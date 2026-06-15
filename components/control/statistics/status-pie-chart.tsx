@@ -28,7 +28,7 @@ export function StatusPieChart({ distribution }: { distribution: any[] }) {
               cursor={{ fill: 'rgba(0,0,0,0.05)' }}
             />
             <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={40}>
-              {distribution.map((entry, index) => (
+              {sortedDistribution.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Bar>

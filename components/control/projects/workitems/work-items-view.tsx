@@ -258,7 +258,7 @@ export function WorkItemsView(props: { projectId: string }) {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="flex flex-col h-full w-full overflow-hidden relative bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-white transition-colors duration-500">
+      <div className="flex flex-col h-full w-full relative bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-white transition-colors duration-500">
         
         {/* HEADER */}
         <div className="flex-none h-16 border-b border-zinc-200/60 dark:border-white/5 flex items-center justify-between px-8 bg-white/70 dark:bg-[#020617]/70 backdrop-blur-xl z-20 sticky top-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">

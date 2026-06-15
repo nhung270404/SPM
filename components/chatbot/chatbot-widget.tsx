@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export function ChatbotWidget({ projectId = "all" }: { projectId?: string }) {
     const [messages, setMessages] = React.useState([
@@ -76,7 +78,24 @@ export function ChatbotWidget({ projectId = "all" }: { projectId?: string }) {
                                 : "mr-auto bg-slate-100 text-slate-700 p-3 rounded-xl max-w-[80%]"
                         }
                     >
-                        {msg.content}
+                        <div className="max-w-none break-words text-[13px] leading-relaxed">
+                          <ReactMarkdown 
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                  p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                                  ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-2 space-y-1 marker:opacity-50" {...props} />,
+                                  ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-2 space-y-1 marker:opacity-50" {...props} />,
+                                  li: ({node, ...props}) => <li className="pl-1" {...props} />,
+                                  strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
+                                  a: ({node, ...props}) => <a className="underline opacity-80 hover:opacity-100" {...props} />,
+                                  h1: ({node, ...props}) => <h1 className="text-base font-bold mt-3 mb-1" {...props} />,
+                                  h2: ({node, ...props}) => <h2 className="text-sm font-bold mt-3 mb-1" {...props} />,
+                                  h3: ({node, ...props}) => <h3 className="text-[13px] font-bold mt-2 mb-1" {...props} />,
+                              }}
+                          >
+                              {msg.content}
+                          </ReactMarkdown>
+                        </div>
                     </div>
                 ))}
 

@@ -81,7 +81,7 @@ export function ProjectSettingsView({ projectId }: { projectId: string }) {
   // 2. Real-time User Search with Pagination
   const searchUsers = async (pageValue: number = 1) => {
     try {
-      const res = await fetch(`/api/user/search?q=${searchTerm}&page=${pageValue}&limit=10`);
+      const res = await fetch(`/api/user/search?q=${searchTerm}&page=${pageValue}&limit=50`);
       const data = await res.json();
       setSearchResults(data.users || []);
       setPaginationData({

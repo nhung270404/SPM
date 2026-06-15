@@ -72,8 +72,10 @@ export function WorkItemsBoard({
     }
 
     return (
-        <div className="absolute inset-0 overflow-x-auto overflow-y-hidden bg-slate-50/50 dark:bg-transparent custom-scrollbar">
-            <DragDropContext onDragEnd={onDragEnd}>
+        <DragDropContext onDragEnd={onDragEnd}>
+            <div 
+                className="absolute inset-0 overflow-x-auto overflow-y-hidden bg-slate-50/50 dark:bg-transparent custom-scrollbar"
+            >
                 <div className="flex h-full p-6 pb-12 gap-5 w-max">
                     {Object.values(columns).map((col: any) => {
                         const Icon = col.icon;
@@ -284,7 +286,7 @@ export function WorkItemsBoard({
                         );
                     })}
                 </div>
-            </DragDropContext>
-        </div>
+            </div>
+        </DragDropContext>
     );
 }

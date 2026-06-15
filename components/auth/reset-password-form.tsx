@@ -77,6 +77,9 @@ export function ResetPasswordFormContent() {
                 value={formData.password}
                 onChange={e => setFormData({...formData, password: e.target.value})}
                 required minLength={6}
+                autoComplete="new-password"
+                autoCapitalize="none"
+                autoCorrect="off"
               />
             </div>
           </div>
@@ -93,6 +96,9 @@ export function ResetPasswordFormContent() {
                 value={formData.confirmPassword}
                 onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
                 required
+                autoComplete="new-password"
+                autoCapitalize="none"
+                autoCorrect="off"
               />
               <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3.5 top-3.5 text-slate-400 hover:text-primary transition-colors">
                 {showPass ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}

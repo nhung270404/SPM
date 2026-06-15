@@ -277,7 +277,10 @@ export const getOverdueWorkItems = async (userId: string) => {
     .populate('project', 'title key')
     .sort({ dueDate: 1 });
 
-    return tasks.map(t => t.toObject());
+    // Filter out orphaned tasks (where project is null because it was deleted)
+    return tasks
+        .filter(t => t.project !== null)
+        .map(t => t.toObject());
 };
 
 export const getGamificationStats = async (userId: string) => {
