@@ -40,7 +40,6 @@ type ChatSendResponse = {
     _id?: string;
   };
 };
-
 function isChatSender(value: unknown): value is ChatSender {
   return value === 'user' || value === 'bot';
 }
@@ -51,6 +50,7 @@ function createMessageId(): string {
 
 export default function SupportPage() {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -84,9 +84,11 @@ export default function SupportPage() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages,isSending]);
 
   const handleSendMessage = async (content: string) => {
+    if (isSending) return;
+
     const userMessage: Message = {
       id: createMessageId(),
       content,
@@ -95,6 +97,7 @@ export default function SupportPage() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    setIsSending(true);
 
     try {
       const res = await fetch('/api/chat', {
@@ -115,7 +118,7 @@ export default function SupportPage() {
         content:
             json.reply ||
             json.message ||
-            'Tôi chưa thể trả lời lúc này. Vui lòng thử lại sau.',
+            'Tôi chưa thể phản hồi lúc này. Bạn vui lòng thử lại sau.',
         sender: 'bot',
         timestamp: new Date(),
       };
@@ -126,27 +129,25 @@ export default function SupportPage() {
 
       const botResponse: Message = {
         id: createMessageId(),
-        content: 'Có lỗi khi kết nối AI chatbot.',
+        content: 'Có lỗi khi kết nối SPM AI Copilot. Bạn vui lòng kiểm tra API hoặc thử lại sau.',
         sender: 'bot',
         timestamp: new Date(),
       };
 
       setMessages((prev) => [...prev, botResponse]);
+    } finally {
+      setIsSending(false);
     }
   };
 
   return (
-      <div className="flex-1 flex flex-col h-[calc(100vh-48px)] bg-white dark:bg-slate-950">
+      <div className="flex h-[calc(100vh-48px)] flex-1 flex-col bg-slate-50 dark:bg-slate-950">
         <ChatHeader />
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          <ChatMessages messages={messages} />
-          <div ref={messagesEndRef} />
-        </div>
+        <ChatMessages messages={messages} isTyping={isSending} />
+        <div ref={messagesEndRef} />
 
-        <div className="sticky bottom-0 border-t p-4 bg-white dark:bg-slate-950 z-10">
-          <ChatInput onSendMessage={handleSendMessage} />
-        </div>
+        <ChatInput onSendMessage={handleSendMessage} disabled={isSending} />
       </div>
   );
 }
