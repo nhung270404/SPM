@@ -30,7 +30,7 @@ Quy tắc:
 - Text thuần, không markdown.
 `;
   const modelsToTry = [
-    "gemini-2.5-flash",
+    "gemini-3.5-flash",
   ];
 
   for (const modelName of modelsToTry) {
