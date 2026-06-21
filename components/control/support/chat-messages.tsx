@@ -17,9 +17,17 @@ interface ChatMessagesProps {
     isTyping?: boolean
 }
 
+import {useEffect, useRef} from 'react';
+
 export function ChatMessages({messages, isTyping}: ChatMessagesProps) {
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, isTyping]);
+
     return (
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+        <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6 no-scrollbar">
             {messages.map((message) => {
                 const isBot = message.sender === 'bot';
                 return (
@@ -83,6 +91,12 @@ export function ChatMessages({messages, isTyping}: ChatMessagesProps) {
                     </div>
                 );
             })}
+            {isTyping && (
+                <div className="flex gap-2 p-3 w-max bg-slate-100 rounded-2xl text-sm text-slate-500">
+                    AI đang phân tích...
+                </div>
+            )}
+            <div ref={messagesEndRef} />
         </div>
     );
 }

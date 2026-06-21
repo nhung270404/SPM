@@ -91,6 +91,12 @@ export function ChatbotWidget({ projectId = "all" }: { projectId?: string }) {
                                   h1: ({node, ...props}) => <h1 className="text-base font-bold mt-3 mb-1" {...props} />,
                                   h2: ({node, ...props}) => <h2 className="text-sm font-bold mt-3 mb-1" {...props} />,
                                   h3: ({node, ...props}) => <h3 className="text-[13px] font-bold mt-2 mb-1" {...props} />,
+                                  table: ({node, ...props}) => <div className="overflow-x-auto my-3 border border-slate-300/60 rounded-lg"><table className="min-w-full text-left border-collapse" {...props} /></div>,
+                                  thead: ({node, ...props}) => <thead className="bg-slate-200/60 text-slate-800" {...props} />,
+                                  tbody: ({node, ...props}) => <tbody className="divide-y divide-slate-300/60" {...props} />,
+                                  tr: ({node, ...props}) => <tr className="last:border-0" {...props} />,
+                                  th: ({node, ...props}) => <th className="px-4 py-2 font-semibold whitespace-nowrap" {...props} />,
+                                  td: ({node, ...props}) => <td className="px-4 py-2 min-w-[120px] align-top" {...props} />,
                               }}
                           >
                               {msg.content}

@@ -51,7 +51,6 @@ function createMessageId(): string {
 export default function SupportPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSending, setIsSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -81,10 +80,6 @@ export default function SupportPage() {
 
     void fetchHistory();
   }, []);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages,isSending]);
 
   const handleSendMessage = async (content: string) => {
     if (isSending) return;
@@ -141,11 +136,10 @@ export default function SupportPage() {
   };
 
   return (
-      <div className="flex h-[calc(100vh-48px)] flex-1 flex-col bg-slate-50 dark:bg-slate-950">
+      <div className="absolute inset-0 flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
         <ChatHeader />
 
         <ChatMessages messages={messages} isTyping={isSending} />
-        <div ref={messagesEndRef} />
 
         <ChatInput onSendMessage={handleSendMessage} disabled={isSending} />
       </div>

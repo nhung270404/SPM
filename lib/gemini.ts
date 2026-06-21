@@ -3,15 +3,18 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey || '');
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
 
 function cleanAIInsight(text: string) {
   return text
       .normalize('NFC')
-      .replace(/```[\s\S]*?```/g, '')
-      .replace(/\*\*/g, '')
-      .replace(/#{1,6}\s?/g, '')
-      .replace(/\n{3,}/g, '\n\n')
+      .replace(/```(json|text|md)?/g, '') // Xóa block code
+      .replace(/```/g, '')
+      .replace(/\*\*/g, '') // Xóa in đậm
+      .replace(/\*/g, '')   // Xóa bullet point (*)
+      .replace(/#{1,6}\s?/g, '') // Xóa thẻ heading
+      .replace(/\[|\]/g, '') // Xóa dấu ngoặc vuông
+      .replace(/\n{3,}/g, '\n\n') // Xóa dòng trống thừa
       .trim()
       .slice(0, 900);
 }
@@ -26,55 +29,42 @@ export async function getAIInsight(data: unknown): Promise<string | null> {
     return null;
   }
 
-  const prompt = `Bạn là AI phân tích dữ liệu cho hệ thống Smart SPM.
-
-Nhiệm vụ:
-Phân tích dữ liệu JSON bên dưới và đưa ra nhận xét quản trị dự án ngắn gọn, đúng trọng tâm và có hành động cụ thể.
+  const prompt = `Bạn là chuyên gia phân tích dữ liệu dự án (Project Manager).
+Hãy phân tích dữ liệu JSON bên dưới và đưa ra 1 đoạn nhận xét ngắn gọn.
 
 DỮ LIỆU:
 ${compactData(data)}
 
-TIÊU CHÍ BẮT BUỘC:
-- Trả lời bằng tiếng Việt.
-- Không bịa dữ liệu ngoài JSON.
-- Không dùng markdown đậm dạng **...**.
-- Không trả về key thô như totalTasks, completedTasks, completionRate, projects, overdueTasks.
-- Chỉ ra vấn đề quan trọng nhất nếu có.
-- Nêu nguyên nhân có khả năng cao nhất dựa trên số liệu.
-- Đề xuất 1 hành động cụ thể có thể làm ngay.
-- Tối đa 90 từ.
+YÊU CẦU BẮT BUỘC (NẾU VI PHẠM SẼ BỊ PHẠT):
+1. CHỈ sử dụng TIẾNG VIỆT 100%. Tuyệt đối không dùng tiếng Anh (không dùng các từ như Critical Tasks, due).
+2. KHÔNG DÙNG BẤT KỲ ĐỊNH DẠNG MARKDOWN NÀO (Không dùng dấu sao *, không dùng in đậm, không dùng gạch đầu dòng).
+3. Chỉ xuất ra văn bản thuần túy (plain text).
+4. Viết thành 3 câu ngắn gọn tương ứng với 3 phần: Nhận định, Nguyên nhân, Hành động. Bắt buộc phải có chữ "Nhận định:", "Nguyên nhân:" và "Hành động:".
 
-CẤU TRÚC TRẢ LỜI:
-Nhận định: ...
-Vấn đề cần chú ý: ...
-Đề xuất: ...`;
+MẪU ĐẦU RA BẮT BUỘC:
+Nhận định: [Đánh giá tình hình...]
+Nguyên nhân: [Lý do chính...]
+Hành động: [Việc cần làm...]`;
 
-  const modelsToTry = [GEMINI_MODEL];
+  try {
+    const model = genAI.getGenerativeModel({
+      model: GEMINI_MODEL,
+      generationConfig: {
+        temperature: 0.1, // Giảm temperature để AI bớt sáng tạo linh tinh
+        maxOutputTokens: 300,
+      },
+    });
 
-  for (const modelName of modelsToTry) {
-    try {
-      console.log(`Trying Gemini model: ${modelName}...`);
+    const result = await model.generateContent(prompt);
+    let text = result.response.text();
+    text = cleanAIInsight(text);
 
-      const model = genAI.getGenerativeModel({
-        model: modelName,
-        generationConfig: {
-          temperature: 0.25,
-          maxOutputTokens: 400,
-        },
-      });
-
-      const result = await model.generateContent(prompt);
-      const text = cleanAIInsight(result.response.text());
-
-      console.log(`Success with model: ${modelName}`);
-      return text || null;
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn(`Model ${modelName} failed: ${message}`);
-    }
+    return text || null;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`AI Insight generation failed: ${message}`);
+    return null;
   }
-
-  return null;
 }
 
 export default getAIInsight;
