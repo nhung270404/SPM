@@ -168,13 +168,23 @@ export const updateWorkItem = async (projectId: string, body: any, userId?: stri
 
     const activities: any[] = [];
 
+    console.log("=== DEBUG TASK UPDATE ===");
+    console.log("User ID:", userId);
+    console.log("Update Status:", updateData.status);
+    console.log("Existing Status:", existingTask.status);
+
     // Track status change
-    if (updateData.status && updateData.status !== existingTask.status && userId) {
-        activities.push({
-            type: 'state',
-            user: userId,
-            content: `đã đổi trạng thái thành <b>${updateData.status}</b>`
-        });
+    if (updateData.status && userId) {
+        const newStatus = updateData.status.trim();
+        const oldStatus = (existingTask.status || '').trim();
+        if (newStatus !== oldStatus) {
+            console.log("-> State changed! Pushing activity.");
+            activities.push({
+                type: 'state',
+                user: userId,
+                content: `đã đổi trạng thái thành <b>${newStatus}</b>`
+            });
+        }
     }
 
     // Track assignee change

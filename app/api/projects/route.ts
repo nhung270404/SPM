@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongo';
 import Project from '@/models/project.model';
-import '@/models/user.model';
+import User from '@/models/user.model';
+import Role from '@/models/role.model';
 import Notification from '@/models/notification.model';
 import { withApiHandler } from '@/lib/api-handler';
 
@@ -154,7 +155,7 @@ export async function POST(
                       Notification.create({
                         recipient: memberId,
                         type: 'info',
-                        title: 'Được thêm vào dự án mới',
+                        title: 'Được thêm vào dự án',
                         message: `Bạn đã được thêm vào dự án "${title}" bởi ${creatorName}`,
                         link: '/control/projects',
                       })
@@ -166,6 +167,39 @@ export async function POST(
                   notificationError
               );
             }
+          }
+
+          try {
+            const creatorName = getUserDisplayName(user);
+            const adminRoles = await Role.find({ level: { $lte: 1 } }).select('_id');
+            const adminRoleIds = adminRoles.map(r => r._id);
+            
+            const admins = await User.find({ 
+               $or: [
+                 { roles: { $in: adminRoleIds } },
+                 { isGod: true }
+               ]
+            }).select('_id').lean();
+            
+            const adminIdsToNotify = admins
+              .map(a => a._id.toString())
+              .filter(id => id !== userId.toString());
+
+            if (adminIdsToNotify.length > 0) {
+              await Promise.all(
+                  adminIdsToNotify.map((adminId) =>
+                      Notification.create({
+                        recipient: adminId,
+                        type: 'info',
+                        title: 'Dự án mới được tạo',
+                        message: `Dự án "${title}" vừa được tạo bởi ${creatorName}`,
+                        link: '/control/projects',
+                      })
+                  )
+              );
+            }
+          } catch (adminNotifError) {
+             console.error('Failed to send admin notifications:', adminNotifError);
           }
 
           return NextResponse.json(newProject, { status: 201 });

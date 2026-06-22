@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft, Settings2, Users, Trash2,
   Save, Loader2, Camera, Search, UserPlus, AlertTriangle,
-  ChevronLeft, ChevronRight, Plus
+  ChevronLeft, ChevronRight, Plus, Layers
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -308,99 +308,115 @@ export function ProjectSettingsView({ projectId }: { projectId: string }) {
             </div>
           ) : (
             <>
-              {/* --- TAB: GENERAL (NO-FRAME STYLE) --- */}
+              {/* --- TAB: GENERAL --- */}
               {activeTab === 'general' && (
-                <div className="w-full max-w-3xl mx-auto space-y-8 animate-in fade-in duration-300">
+                <div className="w-full max-w-3xl mx-auto space-y-6 animate-in fade-in duration-300">
 
-                  {/* 1. MESH BANNER: Cao cấp, phong cách ZenWork */}
-                  <div className="relative w-full rounded-2xl overflow-hidden group shadow-lg border border-zinc-200/60 dark:border-white/5 bg-zinc-100 dark:bg-zinc-900 h-44">
-                    {/* Mesh Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-blue-600/20 to-indigo-900/40 z-10" />
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(6,182,212,0.15),transparent)] z-10" />
-                    
-                    {project?.coverImage ? (
-                      <img src={project.coverImage} className="w-full h-full object-cover grayscale-[0.2] brightness-75 group-hover:scale-105 transition-transform duration-700" alt="Cover" />
-                    ) : (
-                      <div className="w-full h-full bg-[#0a0a0c]" />
-                    )}
-                    
-                    <button 
-                      onClick={() => coverInputRef.current?.click()} 
-                      className="absolute bottom-4 right-4 z-30 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-xl border border-white/20 opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-xl flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider"
-                    >
-                      <Camera className="h-4 w-4" /> Thay ảnh bìa
-                    </button>
-                  </div>
+                  {/* 1. HERO CARD */}
+                  <div className="w-full rounded-3xl border border-zinc-200/60 dark:border-white/[0.06] shadow-xl bg-white dark:bg-[#0d1117] overflow-hidden group">
 
-                  {/* 2. INFO & FORM: Nằm trực tiếp trên background */}
-                  <div className="px-1">
+                    {/* === BANNER === */}
+                    <div className="relative h-44 overflow-hidden bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-[#060d1a] dark:to-[#0a1526]">
+                      {/* Animated mesh gradient blobs */}
+                      <div className="absolute -top-8 -left-8 h-64 w-64 rounded-full bg-cyan-400/20 dark:bg-cyan-500/25 blur-3xl animate-pulse" style={{animationDuration:'4s'}}/>
+                      <div className="absolute -top-4 right-0 h-72 w-72 rounded-full bg-blue-400/20 dark:bg-blue-600/25 blur-3xl animate-pulse" style={{animationDuration:'6s', animationDelay:'1s'}}/>
+                      <div className="absolute bottom-0 left-1/3 h-48 w-72 rounded-full bg-indigo-400/15 dark:bg-indigo-600/20 blur-2xl animate-pulse" style={{animationDuration:'5s', animationDelay:'2s'}}/>
+                      
+                      {/* Grid overlay */}
+                      <div className="absolute inset-0 opacity-[0.05] dark:opacity-[0.03]" style={{backgroundImage:'linear-gradient(currentColor 1px,transparent 1px),linear-gradient(90deg,currentColor 1px,transparent 1px)', backgroundSize:'28px 28px'}} />
+                      
+                      <div className="absolute inset-0 bg-gradient-to-t from-white/60 dark:from-[#060d1a]/80 to-transparent" />
 
-                    {/* Header Info */}
-                    <div className="flex items-end gap-6 mb-10 relative -mt-16 z-20 px-4">
-                      <div 
-                        className="relative h-24 w-24 rounded-3xl bg-white dark:bg-[#121214] flex items-center justify-center shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-zinc-200 dark:border-white/5 group/avatar cursor-pointer overflow-hidden ring-8 ring-zinc-50 dark:ring-[#0a0a0a]" 
+                      {project?.coverImage && (
+                        <img src={project.coverImage} className="absolute inset-0 w-full h-full object-cover opacity-80 dark:opacity-50 group-hover:scale-105 transition-transform duration-700" alt="Cover" />
+                      )}
+
+                      <button
+                        onClick={() => coverInputRef.current?.click()}
+                        className="absolute bottom-3 right-3 z-20 bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 backdrop-blur-md text-zinc-800 dark:text-white/80 px-3 py-1.5 rounded-lg border border-black/5 dark:border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider shadow-sm"
+                      >
+                        <Camera className="h-3 w-3" /> Thay ảnh bìa
+                      </button>
+                    </div>
+
+                    {/* === INFO ROW: Avatar bên trái banner, không float === */}
+                    <div className="flex items-center gap-5 px-6 py-5">
+                      {/* Avatar */}
+                      <div
+                        className="relative flex-none h-16 w-16 rounded-2xl bg-gradient-to-br from-cyan-100 to-blue-50 dark:from-cyan-950 dark:to-blue-900 flex items-center justify-center shadow-lg border-2 border-white dark:border-white/[0.08] group/avatar cursor-pointer overflow-hidden"
                         onClick={() => avatarInputRef.current?.click()}
                       >
-                        {project?.avatar ? <img src={project.avatar} className="w-full h-full object-cover" alt="Avatar"/> : <span className="text-4xl">🚀</span>}
-                        <div className="absolute inset-0 bg-cyan-600/60 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-all duration-300">
-                          <Camera className="h-6 w-6 text-white" />
+                        {project?.avatar
+                          ? <img src={project.avatar} className="w-full h-full object-cover" alt="Avatar"/>
+                          : <Layers className="h-7 w-7 text-cyan-600 dark:text-cyan-400" />
+                        }
+                        <div className="absolute inset-0 bg-cyan-600/75 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-all duration-200">
+                          <Camera className="h-5 w-5 text-white" />
                         </div>
                       </div>
-                      <div className="mb-2">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="outline" className="bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-100 dark:border-cyan-500/20 text-[9px] font-bold tracking-wider uppercase">DỰ ÁN</Badge>
-                          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 font-mono tracking-wider">{project?.key}</span>
+
+                      {/* Title + key + description */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Badge variant="outline" className="bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-100 dark:border-cyan-500/20 text-[9px] font-bold tracking-widest uppercase px-2 h-5 rounded-md">
+                            DỰ ÁN
+                          </Badge>
+                          <span className="text-[10px] font-mono font-bold text-zinc-400 dark:text-zinc-500 tracking-widest">{project?.key}</span>
                         </div>
-                        <h2 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight leading-tight">{project?.title || 'Dự án mới'}</h2>
-                      </div>
-                    </div>
-
-                    {/* Inputs */}
-                    <div className="space-y-8 max-w-2xl bg-white/40 dark:bg-white/[0.02] p-8 rounded-[2rem] border border-white/60 dark:border-white/5 backdrop-blur-xl shadow-sm">
-                      <div className="space-y-2.5">
-                        <label className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-normal flex items-center gap-2">
-                          <span className="h-1 w-1 rounded-full bg-cyan-500" /> Tên dự án <span className="text-red-500">*</span>
-                        </label>
-                        <Input
-                          value={project?.title || ''}
-                          onChange={(e) => setProject({...project, title: e.target.value})}
-                          className="h-12 bg-white dark:bg-[#121214] border-zinc-200 dark:border-white/10 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 rounded-xl text-sm font-medium transition-all"
-                          placeholder="Ví dụ: Hệ thống quản lý SP..."
-                        />
-                      </div>
-
-                      <div className="space-y-2.5">
-                        <label className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-normal flex items-center gap-2">
-                          <span className="h-1 w-1 rounded-full bg-blue-500" /> Mô tả ngắn gọn
-                        </label>
-                        <Textarea
-                          className="min-h-[120px] bg-white dark:bg-[#121214] border-zinc-200 dark:border-white/10 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 rounded-xl resize-none text-sm font-medium leading-relaxed transition-all"
-                          value={project?.description || ''}
-                          onChange={(e) => setProject({...project, description: e.target.value})}
-                          placeholder="Viết vài dòng giới thiệu về mục tiêu dự án này..."
-                        />
-                      </div>
-
-                      <div className="pt-6 flex items-center justify-between border-t border-zinc-100 dark:border-white/5">
-                        <Button 
-                          onClick={() => setDeleteProjectOpen(true)} 
-                          variant="ghost" 
-                          className="h-11 px-6 rounded-2xl text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 font-bold text-[10px] uppercase tracking-wider transition-all"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" /> Xóa dự án
-                        </Button>
-
-                        <Button 
-                          onClick={handleSave} 
-                          disabled={saving} 
-                          className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 text-white h-11 px-8 rounded-2xl shadow-lg shadow-cyan-500/25 transition-all hover:scale-[1.02] active:scale-95 gap-2 text-[10px] font-bold uppercase tracking-wider border-0"
-                        >
-                          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Cập nhật thông tin
-                        </Button>
+                        <h2 className="text-lg font-bold text-zinc-900 dark:text-white tracking-tight leading-tight truncate">
+                          {project?.title || 'Dự án mới'}
+                        </h2>
+                        {project?.description && (
+                          <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5 truncate">{project.description}</p>
+                        )}
                       </div>
                     </div>
                   </div>
 
+                  {/* 2. FORM SECTION */}
+                  <div className="space-y-5 bg-white dark:bg-white/[0.02] p-7 rounded-3xl border border-zinc-200/70 dark:border-white/[0.06] shadow-sm">
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                        <span className="h-1 w-1 rounded-full bg-cyan-500" /> Tên dự án <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        value={project?.title || ''}
+                        onChange={(e) => setProject({...project, title: e.target.value})}
+                        className="h-11 bg-zinc-50 dark:bg-[#121214] border-zinc-200 dark:border-white/10 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/10 rounded-xl text-sm font-medium transition-all"
+                        placeholder="Ví dụ: Hệ thống quản lý SP..."
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                        <span className="h-1 w-1 rounded-full bg-blue-500" /> Mô tả ngắn gọn
+                      </label>
+                      <Textarea
+                        className="min-h-[110px] bg-zinc-50 dark:bg-[#121214] border-zinc-200 dark:border-white/10 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/10 rounded-xl resize-none text-sm font-medium leading-relaxed transition-all"
+                        value={project?.description || ''}
+                        onChange={(e) => setProject({...project, description: e.target.value})}
+                        placeholder="Viết vài dòng giới thiệu về mục tiêu dự án này..."
+                      />
+                    </div>
+
+                    <div className="pt-5 flex items-center justify-between border-t border-zinc-100 dark:border-white/5">
+                      <Button
+                        onClick={() => setDeleteProjectOpen(true)}
+                        variant="ghost"
+                        className="h-10 px-5 rounded-xl text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 font-bold text-[10px] uppercase tracking-wider transition-all gap-2"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Xóa dự án
+                      </Button>
+
+                      <Button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white h-10 px-7 rounded-xl shadow-lg shadow-cyan-500/20 transition-all hover:scale-[1.02] active:scale-95 gap-2 text-[10px] font-bold uppercase tracking-wider border-0"
+                      >
+                        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Cập nhật
+                      </Button>
+                    </div>
+                  </div>
 
                 </div>
               )}

@@ -31,6 +31,7 @@ export async function GET(
         try {
           const notifications = await Notification.find({
             recipient: userId,
+            title: { $ne: 'Được thêm vào dự án mới' },
           })
               .sort({ createdAt: -1 })
               .limit(50);

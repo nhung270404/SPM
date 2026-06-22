@@ -156,7 +156,7 @@ export function WorkItemsView(props: { projectId: string }) {
       if (res.data) {
         const updated = normalizeTask(res.data);
         setTasks(prev => prev.map(t => t._id === draggableId ? updated : t));
-        if (selectedTask?._id === draggableId) setSelectedTask(updated);
+        setSelectedTask(prev => prev?._id === draggableId ? updated : prev);
       }
     } catch (err) {
       toast.error("Không lưu được trạng thái");
@@ -203,7 +203,7 @@ export function WorkItemsView(props: { projectId: string }) {
       if (res.data) {
         const updated = normalizeTask(res.data);
         setTasks(prev => prev.map(t => t._id === taskId ? updated : t));
-        if (selectedTask?._id === taskId) setSelectedTask(updated);
+        setSelectedTask(prev => prev?._id === taskId ? updated : prev);
       }
     } catch (err) {
       toast.error("Không lưu được thay đổi");

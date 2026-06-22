@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import {DragDropContext, Droppable, Draggable, DropResult} from '@hello-pangea/dnd';
 import {HelpCircle, Plus, MoreHorizontal, User, Triangle, GitMerge, Calendar as CalendarIcon, Clock} from 'lucide-react';
 import {format} from "date-fns";
@@ -73,26 +73,25 @@ export function WorkItemsBoard({
 
     return (
         <DragDropContext onDragEnd={onDragEnd}>
-            <div 
-                className="absolute inset-0 overflow-x-auto overflow-y-hidden bg-slate-50/50 dark:bg-transparent custom-scrollbar"
-            >
-                <div className="flex h-full p-6 pb-12 gap-5 w-max">
-                    {Object.values(columns).map((col: any) => {
-                        const Icon = col.icon;
-                        const accentColor = STATUS_COLORS[col.id] || 'bg-slate-400';
-                        return (
-                            <div key={col.id} className="flex-none w-[320px] flex flex-col h-full relative">
-                                {/* COLUMN STATUS ACCENT */}
-                                <div className={cn("absolute top-0 left-0 right-0 h-1.5 rounded-full z-20 shadow-sm", accentColor)} />
-                                
-                                <div className="flex items-center justify-between mb-5 px-3 pt-7">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className={cn("p-1.5 rounded-lg bg-white dark:bg-white/5 shadow-sm border border-zinc-200/50 dark:border-white/5", col.color)}>
-                                            <Icon className="h-4 w-4"/>
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[11px] font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-widest">{col.title}</span>
-                                            <span className="text-[9px] text-zinc-400 font-bold uppercase">{getTasksByStatus(col.id).length} công việc</span>
+            <div className="absolute inset-0 flex flex-col">
+                <div className="flex-1 overflow-auto bg-slate-50/50 dark:bg-transparent custom-scrollbar">
+                    <div className="flex p-6 pb-12 gap-5 w-max min-w-full min-h-full">
+                        {Object.values(columns).map((col: any) => {
+                            const Icon = col.icon;
+                            const accentColor = STATUS_COLORS[col.id] || 'bg-slate-400';
+                            return (
+                                <div key={col.id} className="flex-none w-[320px] flex flex-col relative">
+                                    {/* COLUMN STATUS ACCENT */}
+                                    <div className={cn("absolute top-0 left-0 right-0 h-1.5 rounded-full z-20 shadow-sm", accentColor)} />
+                                    
+                                    <div className="flex items-center justify-between mb-5 px-3 pt-7">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className={cn("p-1.5 rounded-lg bg-white dark:bg-white/5 shadow-sm border border-zinc-200/50 dark:border-white/5", col.color)}>
+                                                <Icon className="h-4 w-4"/>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-[11px] font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-widest">{col.title}</span>
+                                                <span className="text-[9px] text-zinc-400 font-bold uppercase">{getTasksByStatus(col.id).length} công việc</span>
                                         </div>
                                     </div>
                                     {canManageWork && (
@@ -109,7 +108,7 @@ export function WorkItemsBoard({
                                         {...provided.droppableProps}
                                         ref={provided.innerRef}
                                         className={cn(
-                                            "flex-1 rounded-[1.5rem] border border-zinc-200/50 dark:border-white/5 p-3 overflow-y-auto no-scrollbar transition-colors duration-300 relative",
+                                            "flex-1 rounded-[1.5rem] border border-zinc-200/50 dark:border-white/5 p-3 transition-colors duration-300 relative",
                                             STATUS_BG_COLORS[col.id] || "bg-slate-50/50",
                                             snapshot.isDraggingOver ? "ring-2 ring-cyan-500/20 shadow-inner" : ""
                                         )}>
@@ -282,9 +281,10 @@ export function WorkItemsBoard({
                                     </div>
                                 )}
                             </Droppable>
-                            </div>
-                        );
-                    })}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
         </DragDropContext>
